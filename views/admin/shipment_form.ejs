@@ -1,0 +1,109 @@
+<%- include('../partials/top') %>
+<%
+  const acc = v.accessories || [];
+  const has = (label) => acc.some((a) => a.label === label && a.ok);
+  const other = acc.filter((a) => !STD_ACCESSORIES.includes(a.label)).map((a) => a.label).join(', ');
+  const val = (k) => (v[k] === null || v[k] === undefined || Number.isNaN(v[k]) ? '' : v[k]);
+  const isAdmin = user.role === 'admin';
+%>
+<div>
+  <h1><%= sh ? 'Edit watch' : 'New shipment' %></h1>
+  <p class="sub"><%= sh ? 'Watch ' + sh.watch_no + ', shipment ' + sh.shipment_no + '.' : 'The next numbers are issued when you create it: shipment ' + numbering.shipment.next + ', watch ' + numbering.watch.next + '.' %></p>
+  <a class="btn btn-sm" style="margin-top:12px" href="<%= sh ? '/admin/shipments/' + sh.id : '/admin/shipments' %>"><%= sh ? 'Back to the watch' : 'Back to shipments' %></a>
+</div>
+<% if (error) { %><div class="flash flash-err" role="alert"><%= error %></div><% } %>
+<% if (!clients.length) { %>
+<div class="tile"><p>There are no clients yet. <% if (isAdmin) { %><a class="b" href="/admin/users?add=client#invite">Add a client first</a><% } else { %>Ask an admin to add the client first.<% } %></p></div>
+<% } else { %>
+<form id="shipform" method="post" action="<%= sh ? '/admin/shipments/' + sh.id + '/edit' : '/admin/shipments' %>" class="stack" style="gap:22px">
+  <% if (v.request_id) { %><input type="hidden" name="request_id" value="<%= v.request_id %>"><% } %>
+  <section class="tile stack">
+    <div class="row" style="flex-wrap:nowrap;align-items:flex-start"><span class="stepn">1</span><div><h3>Client</h3><p class="hint">Every client has one number for life. New clients are added in Users.</p></div></div>
+    <div><label class="lb" for="f-client">Client</label>
+      <select id="f-client" name="client_id" class="in" required>
+        <option value="">Choose a client</option>
+        <% clients.forEach((c) => { %><option value="<%= c.id %>" <%= c.id === v.client_id ? 'selected' : '' %>><%= c.number %>, <%= c.name %><%= c.city ? ', ' + c.city : '' %></option><% }) %>
+      </select></div>
+  </section>
+
+  <section class="tile stack">
+    <div class="row" style="flex-wrap:nowrap;align-items:flex-start"><span class="stepn">2</span><div><h3>Watch</h3><p class="hint">Pictures and documents are added on the watch page after saving.</p></div></div>
+    <div><label class="lb" for="f-watch">Brand and model</label><input id="f-watch" name="watch" class="in" value="<%= val('watch') %>" placeholder="Rolex Submariner 126610LN" required></div>
+    <div class="grid3">
+      <div><label class="lb" for="f-ref">Reference</label><input id="f-ref" name="reference" class="in" value="<%= val('reference') %>" placeholder="126610LN"></div>
+      <div><label class="lb" for="f-serial">Serial</label><input id="f-serial" name="serial" class="in" value="<%= val('serial') %>" placeholder="Serial number"></div>
+      <div><label class="lb" for="f-date">Watch date</label><input id="f-date" name="watch_date" class="in" value="<%= val('watch_date') %>" placeholder="Year or card date"></div>
+    </div>
+    <div class="grid2">
+      <div><label class="lb" for="f-value">Declared value, <%= cur %></label><input id="f-value" name="value" class="in" type="number" min="0" step="0.01" value="<%= val('value') %>" placeholder="0.00"></div>
+      <div><label class="lb" for="f-ins">Insurance</label><input id="f-ins" name="insurance" class="in" value="<%= val('insurance') %>" placeholder="Insured to 15,000"></div>
+    </div>
+    <div><span class="lb">Accessories received with the watch</span>
+      <div class="checks"><% STD_ACCESSORIES.forEach((a) => { %><label><input type="checkbox" name="acc" value="<%= a %>" <%= has(a) ? 'checked' : '' %>><%= a %></label><% }) %></div></div>
+    <div><label class="lb" for="f-other">Other accessories, separated by commas</label><input id="f-other" name="acc_other" class="in" value="<%= other %>" placeholder="Bezel protector, service papers"></div>
+  </section>
+
+  <section class="tile stack">
+    <div class="row" style="flex-wrap:nowrap;align-items:flex-start"><span class="stepn">3</span><div><h3>Collection</h3><p class="hint">Where and when the watch was picked up. This is the collected date and time the client sees.</p></div></div>
+    <div class="grid2">
+      <div><label class="lb" for="f-coll">Collected date and time</label><input id="f-coll" name="collected_at" class="in" type="datetime-local" value="<%= toLocalInput(v.collected_at) %>" required></div>
+      <% if (!sh) { %><div><label class="lb" for="f-from">Collected at</label><input id="f-from" name="collected_from" class="in" value="<%= val('collected_from') %>" placeholder="Client, Dubai Marina"></div><% } %>
+    </div>
+    <div class="grid2">
+      <div><label class="lb" for="f-origin">From (city)</label><input id="f-origin" name="origin" class="in" value="<%= val('origin') %>" placeholder="Dubai"></div>
+      <div><label class="lb" for="f-dest">To (city)</label><input id="f-dest" name="destination" class="in" value="<%= val('destination') %>" placeholder="Lisbon"></div>
+    </div>
+  </section>
+
+  <section class="tile stack">
+    <div class="row" style="flex-wrap:nowrap;align-items:flex-start"><span class="stepn">4</span><div><h3>Delivery</h3><p class="hint">The address printed on the A4 label. Leave blank to use the address saved on the client's account.</p></div></div>
+    <div><label class="lb" for="f-an">Recipient name</label><input id="f-an" name="addr_name" class="in" value="<%= val('addr_name') %>"></div>
+    <div><label class="lb" for="f-al">Delivery address</label><textarea id="f-al" name="addr_lines" class="in" rows="3" placeholder="Street&#10;Postcode City&#10;COUNTRY"><%= val('addr_lines') %></textarea></div>
+    <div class="grid2">
+      <div><label class="lb" for="f-ap">Recipient phone</label><input id="f-ap" name="addr_phone" class="in" value="<%= val('addr_phone') %>"></div>
+      <div><label class="lb" for="f-ano">Delivery note</label><input id="f-ano" name="addr_note" class="in" value="<%= val('addr_note') %>" placeholder="Signature required"></div>
+    </div>
+    <div><label class="lb" for="f-eta">Expected delivery, shown to the client</label><input id="f-eta" name="eta_note" class="in" value="<%= val('eta_note') %>" placeholder="Expected 28 Nov, 12:00 to 15:30"></div>
+  </section>
+
+  <% if (!sh) { %>
+  <section class="tile stack">
+    <div class="row" style="flex-wrap:nowrap;align-items:flex-start"><span class="stepn">5</span><div><h3>Courier and cost</h3><p class="hint">The cost is entered by hand. Leave it empty to add it later from Costs.</p></div></div>
+    <div class="grid2">
+      <div><label class="lb" for="f-courier">Courier</label><input id="f-courier" name="courier" class="in" list="couriers" value="<%= val('courier') %>" placeholder="Ferrari Group"><datalist id="couriers"><% COURIERS.forEach((c) => { %><option value="<%= c %>"><% }) %></datalist></div>
+      <div><label class="lb" for="f-awb">AWB or tracking no.</label><input id="f-awb" name="awb" class="in" value="<%= val('awb') %>"></div>
+    </div>
+    <% if (isAdmin) { %>
+    <div class="grid2">
+      <div><label class="lb" for="f-cost">Shipment cost, <%= cur %></label><input id="f-cost" name="cost" class="in" type="number" min="0" step="0.01" value="<%= val('cost') %>" placeholder="0.00"></div>
+      <div><label class="lb" for="f-paid">Paid from</label><select id="f-paid" name="paid_from" class="in"><% PAID_FROM.forEach((p) => { %><option <%= p === v.paid_from ? 'selected' : '' %>><%= p %></option><% }) %></select></div>
+    </div>
+    <% } %>
+  </section>
+  <% } %>
+</form>
+<% } %>
+
+<%- include('../partials/mid') %>
+<div><h1 style="font-size:28px"><%= sh ? 'Save' : 'Preview' %></h1><p class="sub" style="margin-top:2px"><%= sh ? 'Changes show to the client right away.' : 'What gets issued once you create it.' %></p></div>
+<div class="tile tile-teal stack">
+  <% if (sh) { %>
+  <div class="kv"><span>Shipment number</span><b style="font-size:20px"><%= sh.shipment_no %></b></div>
+  <div class="kv"><span>Watch number</span><b style="font-size:20px"><%= sh.watch_no %></b></div>
+  <% } else { %>
+  <div class="kv"><span>Next shipment number</span><b style="font-size:20px"><%= numbering.shipment.next %></b></div>
+  <div class="kv"><span>Next watch number</span><b style="font-size:20px"><%= numbering.watch.next %></b></div>
+  <div style="border-top:1px solid rgba(255,255,255,.3);padding-top:12px;font-size:14px">The client sees the watch in their portal as soon as it is created. The address label and watch sheet can be printed from the watch page.</div>
+  <% } %>
+</div>
+<% if (clients.length) { %><button class="btn btn-primary btn-wide" form="shipform"><%= sh ? 'Save changes' : 'Create shipment' %></button><% } %>
+<a class="btn btn-wide" href="<%= sh ? '/admin/shipments/' + sh.id : '/admin/shipments' %>">Cancel</a>
+<div class="panel" style="background:var(--amber-soft)">
+  <h3 style="color:var(--amber-ink)">Before you <%= sh ? 'save' : 'create it' %></h3>
+  <ul class="small" style="padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--muted)">
+    <li>The serial must match the warranty card.</li>
+    <li>The declared value is what the insurance is based on.</li>
+    <li>Tick only the accessories you actually received.</li>
+  </ul>
+</div>
+<%- include('../partials/bottom') %>

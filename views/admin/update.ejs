@@ -1,0 +1,55 @@
+<%- include('../partials/top') %>
+<div class="phone">
+  <div><h1>Update portal</h1><p class="sub"><%= user.name %>, <%= ROLE_LABEL[user.role].toLowerCase() %> <%= user.number %></p></div>
+
+  <form class="search" method="get" action="/admin/update" style="margin:0;max-width:none;flex:none">
+    <label class="sr" for="u-w">Watch or shipment number</label>
+    <input id="u-w" name="w" class="in" type="search" value="<%= w %>" placeholder="Watch or shipment number" style="height:56px;font-size:18px;font-weight:600" autofocus>
+    <button aria-label="Find the watch" class="rb" style="top:6px;right:8px;position:absolute;background:var(--teal);color:#fff;width:44px;height:44px"><%- icon('search', 20) %></button>
+  </form>
+
+  <% if (w && !found) { %><div class="flash flash-err">No watch matches “<%= w %>”. Check the number on the watch sheet.</div><% } %>
+  <% if (found) { %>
+  <div class="tile row" style="flex-wrap:nowrap;gap:16px">
+    <span class="ico ico-soft" style="width:56px;height:56px;border-radius:16px"><%- icon('watch', 24) %></span>
+    <div class="grow"><h3 style="font-size:19px"><%= found.watch %></h3><div class="small muted"><%= found.watch_no %>, <%= found.shipment_no %>, <%= found.client_no %> <%= found.client_name %></div></div>
+    <span class="<%= chipClass(found.status) %>"><%= found.status %></span>
+  </div>
+
+  <form class="stack" method="post" action="/admin/shipments/<%= found.id %>/events" style="gap:16px">
+    <input type="hidden" name="back" value="update">
+    <fieldset style="border:0;padding:0;margin:0">
+      <legend class="lb" style="font-size:15px">New status</legend>
+      <div class="pick">
+        <% STATUSES.forEach((st) => { %><label><input type="radio" name="status" value="<%= st %>" <%= st === NEXT_STATUS[found.status] ? 'checked' : '' %> required><span><%= st %></span></label><% }) %>
+      </div>
+    </fieldset>
+    <div><label class="lb" for="u-where" style="font-size:15px">Location</label><input id="u-where" name="location" class="in" placeholder="Lisbon, Rua Augusta" style="height:52px"></div>
+    <div><label class="lb" for="u-note" style="font-size:15px">Note for the client, optional</label><input id="u-note" name="note" class="in" style="height:52px"></div>
+    <div><label class="lb" for="u-sign" style="font-size:15px">Signed by, when delivered</label><input id="u-sign" name="signed_by" class="in" placeholder="Name of the person who signed" style="height:52px"></div>
+    <button class="btn btn-primary btn-wide" style="min-height:60px;font-size:18px">Post update</button>
+    <p class="hint" style="text-align:center">Time tracker restarts when you post. <a class="b" href="/admin/shipments/<%= found.id %>">Open the full watch page</a></p>
+  </form>
+  <% } else if (!w) { %>
+  <p class="muted">Type the watch number from the sheet (for example <%= settings.prefix_watch %>00001), or a shipment number or serial, to post its next update.</p>
+  <% } %>
+
+  <h3 class="muted" style="margin-top:6px">Recent</h3>
+  <% if (!recent.length) { %><p class="small muted">Updates you post will be listed here.</p><% } %>
+  <% recent.forEach((e) => { %>
+  <a class="tile row" href="/admin/update?w=<%= encodeURIComponent(e.watch_no) %>" style="flex-wrap:nowrap;padding:16px 20px;gap:14px;color:var(--ink)">
+    <i class="dot <%= e.status === 'Collected' || e.status === 'Customs hold' ? 'dot-coral' : '' %>"></i>
+    <span class="grow"><span class="b" style="display:block"><%= e.watch_no %>, <%= e.status %></span><span class="small muted" style="display:block"><%= [e.location, fmtDT(e.created_at)].filter(Boolean).join(', ') %></span></span>
+  </a>
+  <% }) %>
+</div>
+<%- include('../partials/mid') %>
+<div><h1 style="font-size:28px">How it works</h1></div>
+<div class="panel">
+  <ol class="small" style="padding-left:18px;display:flex;flex-direction:column;gap:8px;color:var(--muted)">
+    <li>Find the watch by the number printed on its sheet.</li>
+    <li>Pick the new status and say where the watch is.</li>
+    <li>Post. The client sees the update straight away.</li>
+  </ol>
+</div>
+<%- include('../partials/bottom') %>

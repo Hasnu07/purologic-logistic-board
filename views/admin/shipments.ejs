@@ -1,0 +1,65 @@
+<%- include('../partials/top') %>
+<% const canEdit = user.role !== 'courier'; const showCost = canEdit; const link = (t) => '/admin/shipments?tab=' + t + (qs ? '&' + qs : ''); %>
+<div class="head">
+  <div><h1>Shipments</h1><p class="sub">Every shipment with its collected date and time, status, courier and cost.</p></div>
+  <% if (canEdit) { %><a class="btn btn-primary" href="/admin/shipments/new"><%- icon('plus', 18, 2.2) %>New shipment</a><% } %>
+</div>
+
+<div class="tabs">
+  <% [['active', 'Active'], ['delivered', 'Delivered'], ['history', 'History'], ['attention', 'Needs attention']].forEach(([key, label]) => { %>
+  <a class="<%= tab === key ? 'on' : '' %>" href="<%= link(key) %>"><%= label %><span class="n"><%= tabs[key].length %></span></a>
+  <% }) %>
+</div>
+
+<form class="row" method="get" action="/admin/shipments" style="gap:12px">
+  <input type="hidden" name="tab" value="<%= tab %>"><% if (q) { %><input type="hidden" name="q" value="<%= q %>"><% } %>
+  <div style="flex:1 1 150px"><label class="sr" for="f-courier">Courier</label><select id="f-courier" name="courier" class="in"><option value="">All couriers</option><% couriers.forEach((c) => { %><option <%= c === courier ? 'selected' : '' %>><%= c %></option><% }) %></select></div>
+  <div style="flex:1 1 150px"><label class="sr" for="f-route">Route</label><select id="f-route" name="route" class="in"><option value="">All routes</option><% routes.forEach((c) => { %><option <%= c === route ? 'selected' : '' %>><%= c %></option><% }) %></select></div>
+  <div style="flex:1 1 140px"><label class="sr" for="f-from">Collected from</label><input id="f-from" name="from" type="date" class="in" value="<%= from %>" title="Collected from"></div>
+  <div style="flex:1 1 140px"><label class="sr" for="f-to">Collected to</label><input id="f-to" name="to" type="date" class="in" value="<%= to %>" title="Collected to"></div>
+  <button class="btn">Filter</button>
+  <% if (qs) { %><a class="b" href="/admin/shipments?tab=<%= tab %>">Clear</a><% } %>
+</form>
+
+<div class="tile table-tile">
+  <% if (!rows.length) { %><div class="empty"><%= qs ? 'Nothing matches these filters.' : 'Nothing here yet.' %></div><% } else { %>
+  <div class="scroll"><table>
+    <thead><tr><th>Shipment</th><th>Watch no.</th><th>Watch</th><th>Client</th><th>Collected</th><th>Status</th><% if (showCost) { %><th>Cost</th><% } %><th><span class="sr">Open</span></th></tr></thead>
+    <tbody>
+    <% rows.forEach((r) => { %>
+    <tr>
+      <td class="b"><%= r.shipment_no %></td>
+      <td class="no"><%= r.watch_no %></td>
+      <td><%= r.watch %></td>
+      <td><span class="b"><%= r.client_no %></span> <span class="muted"><%= r.client_name %></span></td>
+      <td><%= fmtDT(r.collected_at) %></td>
+      <td><span class="<%= chipClass(r.status) %>"><%= r.status %></span></td>
+      <% if (showCost) { %><td class="b"><%= r.cost === null ? 'No cost yet' : money(r.cost, cur) %></td><% } %>
+      <td><a class="rb rb-line rb-sm" href="/admin/shipments/<%= r.id %>" aria-label="Open <%= r.shipment_no %>"><%- icon('arrow', 16, 2.2) %></a></td>
+    </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+  <div class="foot-row"><span>Showing <%= rows.length %> of <%= tabs.history.length %> shipment<%= tabs.history.length === 1 ? '' : 's' %><%= q ? ' for “' + q + '”' : '' %></span></div>
+  <% } %>
+</div>
+
+<%- include('../partials/mid') %>
+<div><h1 style="font-size:28px">Today</h1><p class="sub" style="margin-top:2px"><%= new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' }) %></p></div>
+<div class="grid2">
+  <div class="tile tile-teal"><div class="t-num"><%= collectedToday %></div><div class="t-note">collected today</div></div>
+  <div class="tile tile-amber"><div class="t-num"><%= outForDelivery %></div><div class="t-note">out for delivery</div></div>
+</div>
+<h3>Needs attention</h3>
+<% if (!cards.length) { %><p class="small muted">Nothing needs attention right now.</p><% } %>
+<% cards.forEach((c) => { %>
+<div class="note <%= c.tone %>" style="display:block"><div class="t" style="font-size:17px"><%= c.title %></div><div class="s" style="font-size:14px"><%= c.sub %></div><a class="b" href="<%= c.link %>" style="display:inline-block;margin-top:8px"><%= c.action %></a></div>
+<% }) %>
+<% if (canEdit) { %>
+<div class="panel">
+  <h3>Export this list</h3>
+  <p class="hint">Uses the tab and filters on the left. Costs are included for admins only.</p>
+  <div><a class="btn" href="/admin/shipments.csv?tab=<%= tab %><%= qs ? '&' + qs : '' %>"><%- icon('download') %>CSV</a></div>
+</div>
+<% } %>
+<%- include('../partials/bottom') %>

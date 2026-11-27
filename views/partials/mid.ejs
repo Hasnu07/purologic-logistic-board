@@ -1,0 +1,10 @@
+</section>
+<aside class="right">
+<div class="acct">
+  <% if (user.role !== 'client' && user.role !== 'courier' && !user.must_change) { const n = locals.alerts || 0; %>
+  <a class="bell" href="/admin/shipments?tab=attention" aria-label="<%= n ? n + ' shipments need attention' : 'Nothing needs attention' %>" title="<%= n ? n + ' need attention' : 'Nothing needs attention' %>"><%- icon('bell', 26, 1.8) %><% if (n) { %><i></i><% } %></a>
+  <% } %>
+  <form method="post" action="/logout"><button class="btn btn-sm">Sign out</button></form>
+  <div class="who"><div><%= user.name %></div><div class="small muted"><%= user.role === 'client' ? 'Client ' + user.number : ROLE_LABEL[user.role] + ' ' + user.number %> · <%= deviceCount %> device<%= deviceCount === 1 ? '' : 's' %></div></div>
+  <a class="av av-lg <%= user.role === 'client' ? 'av-coral' : user.role === 'courier' ? 'av-amber' : 'av-teal' %>" href="/account" aria-label="My account" title="My account"><%= initials(user.name) %></a>
+</div>

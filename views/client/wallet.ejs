@@ -1,0 +1,35 @@
+<%- include('../partials/top') %>
+<div><h1>Shipment wallet</h1><p class="sub">Shipping costs are charged here per watch. Keep it funded so deliveries are never held.</p></div>
+
+<div class="tiles">
+  <div class="tile tile-amber t1"><div class="t-label">Balance</div><div class="t-num"><%= money(wallet.balance, cur) %></div><div class="t-note">as of <%= fmtDT(new Date().toISOString()) %></div></div>
+  <div class="tile t1"><div class="t-label">Pending charges</div><div class="t-num"><%= money(wallet.pending, cur) %></div><div class="t-note"><%= wallet.pendingItems.length ? wallet.pendingItems.map((p) => p.shipment_no).join(', ') + ', charged on delivery' : 'nothing pending' %></div></div>
+  <div class="tile tile-teal t1"><div class="t-label">Available</div><div class="t-num"><%= money(wallet.available, cur) %></div><div class="t-note">after pending charges</div></div>
+</div>
+<div class="tile"><div class="t-label">Spent on shipping, all time</div><div class="t-num"><%= money(spent, cur) %></div><div class="t-note"><%= count %> shipment<%= count === 1 ? '' : 's' %></div></div>
+
+<section class="tile stack" style="padding:28px 24px">
+  <h2>Statement</h2>
+  <% if (!lines.length) { %><p class="small muted">No wallet activity yet.</p><% } else { %>
+  <div class="scroll"><table>
+    <thead><tr><th>Date</th><th>Description</th><th>Shipment</th><th>Amount</th><th>Balance</th></tr></thead>
+    <tbody><% lines.forEach((l) => { %>
+    <tr><td class="muted"><%= fmtDay(l.at) %></td><td class="b" style="font-weight:600"><%= l.what %></td><td class="muted"><%= l.ref %></td><td class="b" style="color:<%= l.amount < 0 ? (l.pending ? 'var(--amber-ink)' : 'var(--ink)') : 'var(--teal)' %>"><%= l.amount < 0 ? '−' + money(-l.amount, cur) : '+' + money(l.amount, cur) %></td><td><%= money(l.balance, cur) %></td></tr>
+    <% }) %></tbody>
+  </table></div>
+  <% } %>
+</section>
+
+<%- include('../partials/mid') %>
+<h1 style="font-size:28px">Situation</h1>
+<% if (wallet.available >= 0) { %>
+<div class="note"><span class="ico"><%- icon('tick', 18, 2.4) %></span><div><div class="t" style="font-size:17px">Good standing</div><div class="s">No overdue shipping.<%= wallet.pending ? ' Next charge ' + money(wallet.pending, cur) + ' on delivery.' : '' %></div></div></div>
+<% } else { %>
+<div class="note note-coral"><span class="ico"><%- icon('cost') %></span><div><div class="t" style="font-size:17px">Top-up needed</div><div class="s">Your balance is <%= money(-wallet.available, cur) %> short of the pending charges.</div></div></div>
+<% } %>
+<div class="panel">
+  <h2>Top up</h2>
+  <p class="hint">To add funds, contact us and send the payment the way we agreed. Your balance updates here as soon as we record it.</p>
+  <p class="hint">Quote your client number <strong style="color:var(--ink)"><%= user.number %></strong> with every payment.</p>
+</div>
+<%- include('../partials/bottom') %>

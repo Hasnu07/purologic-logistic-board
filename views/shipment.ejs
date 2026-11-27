@@ -1,0 +1,150 @@
+<%- include('partials/top') %>
+<%
+  const canEdit = staffView && user.role !== 'courier';
+  const isAdmin = staffView && user.role === 'admin';
+  const showCost = !staffView || canEdit;
+  const home = staffView ? '/admin/shipments' : '/client/shipments';
+%>
+<nav class="crumbs" aria-label="Breadcrumb"><a href="<%= home %>"><%= staffView ? 'Shipments' : 'My shipments' %></a><%- icon('right', 16, 2.2) %><span><%= sh.shipment_no %></span></nav>
+
+<div>
+  <div class="row" style="gap:14px"><h1><%= sh.watch %></h1><span class="<%= chipClass(sh.status) %>" style="font-size:14px;padding:8px 14px"><%= sh.status %></span></div>
+  <p class="sub">Watch <%= sh.watch_no %> for <%= sh.client_name %>, <%= sh.client_no %>. <%= route(sh) === '—' ? '' : route(sh) + (sh.courier ? ' with ' + sh.courier : '') + '.' %></p>
+  <% if (staffView) { %>
+  <div class="row" style="margin-top:16px">
+    <a class="btn" style="min-height:48px" href="/admin/shipments/<%= sh.id %>/print?auto=1" target="_blank" rel="noopener"><%- icon('print') %>Auto print, A4</a>
+    <% if (canEdit) { %><a class="btn btn-primary" href="/admin/shipments/<%= sh.id %>/edit">Edit watch</a><% } %>
+  </div>
+  <% } %>
+</div>
+
+<div class="tiles">
+  <section class="tile t1 stack" style="flex-basis:260px">
+    <div class="row between"><h3 style="font-size:20px">Pictures</h3><span class="small muted"><%= photos.length %> on file</span></div>
+    <% if (!photos.length) { %><p class="small muted">No pictures have been added yet.</p><% } else { %>
+    <div class="photos">
+      <% photos.forEach((p) => { %>
+      <figure class="photo">
+        <a href="/files/photo/<%= p.id %>" target="_blank" rel="noopener" style="display:block;width:100%;height:100%"><img src="/files/photo/<%= p.id %>" alt="<%= p.label || 'Watch picture' %>" loading="lazy"></a>
+        <% if (p.label) { %><figcaption><%= p.label %></figcaption><% } %>
+        <% if (canEdit) { %><form method="post" action="/admin/photos/<%= p.id %>/delete"><button class="photo-x" aria-label="Remove picture" title="Remove picture"><%- icon('cross', 14, 3) %></button></form><% } %>
+      </figure>
+      <% }) %>
+    </div>
+    <% } %>
+    <% if (canEdit) { %>
+    <form class="stack" method="post" action="/admin/shipments/<%= sh.id %>/photos" enctype="multipart/form-data" style="gap:10px;margin-top:auto">
+      <div><label class="lb" for="p-file">Add pictures (JPG, PNG, WebP)</label><input id="p-file" class="in" type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple required></div>
+      <div class="row" style="flex-wrap:nowrap"><label class="sr" for="p-label">Label</label><input id="p-label" class="in" name="label" placeholder="Front, caseback, clasp"><button class="rb" aria-label="Add pictures"><%- icon('plus', 18, 2.4) %></button></div>
+    </form>
+    <% } %>
+  </section>
+
+  <section class="tile tile-teal t1 stack" style="flex-basis:220px;padding:28px">
+    <div class="b">Declared value</div>
+    <div class="t-big" style="font-size:44px"><%= money(sh.value, cur) %></div>
+    <div class="muted"><%= sh.insurance || 'Insurance not recorded' %></div>
+    <div style="border-top:1px solid rgba(255,255,255,.3);margin-top:auto;padding-top:16px" class="stack">
+      <% if (showCost) { %><div class="kv"><span>Shipment cost</span><b><%= sh.cost === null ? 'To be confirmed' : money(sh.cost, cur) %></b></div><% } %>
+      <div class="kv"><span>AWB</span><b><%= sh.awb || '—' %></b></div>
+      <div class="kv"><span><%= isClosed(sh.status) ? 'Collection to ' + sh.status.toLowerCase() : 'Time since collection' %></span><b><%= elapsed %></b></div>
+    </div>
+  </section>
+
+  <section class="tile tile-amber t1 stack" style="flex-basis:220px;padding:28px">
+    <div class="b">Delivery address</div>
+    <address style="font-style:normal;font-size:18px;font-weight:600;line-height:1.5;white-space:pre-line"><%= sh.addr_name || sh.client_name %>
+<%= sh.addr_lines || 'No address on file' %></address>
+    <div class="small b"><%= [sh.addr_phone, sh.addr_note].filter(Boolean).join(', ') %></div>
+    <% if (sh.eta_note && !isClosed(sh.status)) { %><div class="small b"><%= sh.eta_note %></div><% } %>
+    <% if (staffView) { %><a class="rb rb-dark" href="/admin/shipments/<%= sh.id %>/print?auto=1" target="_blank" rel="noopener" aria-label="Print the address label" style="margin-top:auto;align-self:flex-end"><%- icon('print') %></a><% } %>
+  </section>
+</div>
+
+<div class="tiles">
+  <section class="tile t2 stack" style="padding:30px;gap:22px">
+    <h2>Watch details</h2>
+    <dl class="facts">
+      <div><dt>Reference</dt><dd><%= sh.reference || '—' %></dd></div>
+      <div><dt>Serial</dt><dd><%= sh.serial || '—' %></dd></div>
+      <div><dt>Watch date</dt><dd><%= sh.watch_date || '—' %></dd></div>
+      <div><dt>Watch no.</dt><dd class="no" style="font-size:17px"><%= sh.watch_no %></dd></div>
+      <div><dt>Shipment</dt><dd><%= sh.shipment_no %></dd></div>
+      <div><dt>Client</dt><dd><%= sh.client_no %>, <%= sh.client_name %></dd></div>
+      <div><dt>Collected</dt><dd><%= fmtDT(sh.collected_at) %></dd></div>
+      <div><dt>Courier</dt><dd><%= sh.courier || 'Not booked' %></dd></div>
+      <div><dt><%= sh.status === 'Delivered' ? 'Delivered' : 'Route' %></dt><dd><%= sh.status === 'Delivered' ? fmtDT(sh.delivered_at) + (sh.signed_by ? ', signed by ' + sh.signed_by : '') : route(sh) %></dd></div>
+    </dl>
+  </section>
+  <section class="tile t1 stack" style="padding:30px;flex-basis:260px;gap:18px">
+    <h2>Accessories</h2>
+    <% if (!accessories.length) { %><p class="small muted">None recorded.</p><% } else { %>
+    <ul class="acc"><% accessories.forEach((a) => { %><li><span class="acc-mark <%= a.ok ? '' : 'acc-no' %>"><%- icon(a.ok ? 'tick' : 'cross', 13, 3) %></span><span><%= a.label %><% if (!a.ok) { %> <span class="muted small">not included</span><% } %></span></li><% }) %></ul>
+    <% } %>
+  </section>
+</div>
+
+<section id="docs" class="tile stack" style="padding:30px;gap:4px">
+  <h2 style="margin-bottom:8px">Shipment documents</h2>
+  <% if (!docs.length) { %><p class="small muted"><%= staffView ? 'No documents yet.' : 'Air waybill, insurance and customs papers appear here when we add them.' %></p><% } %>
+  <% docs.forEach((d) => { %>
+  <div class="file-row">
+    <span class="ico ico-soft"><%- icon('doc') %></span>
+    <div class="grow"><div class="b"><%= d.name %></div><div class="small muted"><%= d.mime === 'application/pdf' ? 'PDF' : 'Image' %>, <%= fileSize(d.size) %>, <%= fmtDate(d.created_at) %></div></div>
+    <a class="btn btn-sm" href="/files/doc/<%= d.id %>" target="_blank" rel="noopener">Download</a>
+    <% if (canEdit) { %><form method="post" action="/admin/docs/<%= d.id %>/delete"><button class="btn btn-sm btn-danger">Remove</button></form><% } %>
+  </div>
+  <% }) %>
+  <% if (canEdit) { %>
+  <form class="row" method="post" action="/admin/shipments/<%= sh.id %>/docs" enctype="multipart/form-data" style="align-items:flex-end;margin-top:14px">
+    <div style="flex:1 1 180px"><label class="lb" for="d-name">Document name</label><input id="d-name" class="in" name="name" placeholder="Air waybill"></div>
+    <div style="flex:2 1 220px"><label class="lb" for="d-file">File (PDF or image)</label><input id="d-file" class="in" type="file" name="doc" accept="application/pdf,image/jpeg,image/png,image/webp" required></div>
+    <button class="btn">Add document</button>
+  </form>
+  <% } %>
+</section>
+
+<%- include('partials/mid') %>
+<div class="row between" style="align-items:baseline"><h1 style="font-size:28px">Tracking</h1><span class="small muted b"><%= elapsed %> <%= isClosed(sh.status) ? 'in total' : 'on the move' %></span></div>
+<div class="track">
+  <% events.forEach((e) => { %>
+  <div class="slot">
+    <span class="time"><%= fmtTime(e.created_at) %></span>
+    <div class="<%= toneClass(e.status) %>">
+      <div class="row between" style="flex-wrap:nowrap;align-items:flex-start"><span class="t" style="font-size:17px"><%= e.status %></span><% if (e.dur) { %><span class="dur"><%= e.dur %></span><% } %></div>
+      <div class="s" style="font-size:14px"><%= [e.location, fmtDay(e.created_at), staffView ? e.by_name : ''].filter(Boolean).join(', ') %></div>
+      <% if (e.note) { %><div class="ev-note"><%= e.note %></div><% } %>
+    </div>
+  </div>
+  <% }) %>
+</div>
+<% if (canEdit && events.length > 1) { %>
+<form method="post" action="/admin/shipments/<%= sh.id %>/events/undo"><button class="linkish small">Remove the latest update (posted by mistake)</button></form>
+<% } %>
+
+<% if (staffView) { %>
+<form class="panel" method="post" action="/admin/shipments/<%= sh.id %>/events">
+  <div><h2>Post an update</h2><p class="hint">The client sees it right away and the time tracker restarts.</p></div>
+  <div><label class="lb" for="u-status">New status</label>
+    <select id="u-status" name="status" class="in"><% STATUSES.forEach((st) => { %><option <%= st === NEXT_STATUS[sh.status] ? 'selected' : '' %>><%= st %></option><% }) %></select></div>
+  <div><label class="lb" for="u-where">Location</label><input id="u-where" name="location" class="in" placeholder="Lisbon, courier van 3"></div>
+  <div><label class="lb" for="u-note">Note for the client, optional</label><textarea id="u-note" name="note" class="in" rows="2" placeholder="Signature required at delivery"></textarea></div>
+  <div><label class="lb" for="u-sign">Signed by, when delivered</label><input id="u-sign" name="signed_by" class="in" placeholder="Name of the person who signed"></div>
+  <div class="row"><button class="btn btn-primary">Post update</button><span class="small muted">Last update <%= fmtDT(events[0].created_at) %></span></div>
+</form>
+<% } %>
+
+<% if (isAdmin) { %>
+<form class="panel" method="post" action="/admin/cost">
+  <h2>Shipment cost</h2>
+  <input type="hidden" name="shipment_id" value="<%= sh.id %>"><input type="hidden" name="back" value="shipment">
+  <div><label class="lb" for="c-courier">Courier</label><input id="c-courier" name="courier" class="in" list="couriers" value="<%= sh.courier %>"><datalist id="couriers"><% COURIERS.forEach((c) => { %><option value="<%= c %>"><% }) %></datalist></div>
+  <div><label class="lb" for="c-awb">AWB or tracking no.</label><input id="c-awb" name="awb" class="in" value="<%= sh.awb %>"></div>
+  <div class="grid2">
+    <div><label class="lb" for="c-cost">Cost, <%= cur %></label><input id="c-cost" name="cost" class="in" type="number" min="0" step="0.01" value="<%= sh.cost === null ? '' : sh.cost %>" required></div>
+    <div><label class="lb" for="c-paid">Paid from</label><select id="c-paid" name="paid_from" class="in"><% PAID_FROM.forEach((p) => { %><option <%= p === sh.paid_from ? 'selected' : '' %>><%= p %></option><% }) %></select></div>
+  </div>
+  <div><button class="btn">Save cost</button></div>
+</form>
+<% } %>
+<%- include('partials/bottom') %>

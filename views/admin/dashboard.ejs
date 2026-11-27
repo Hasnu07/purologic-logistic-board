@@ -1,0 +1,100 @@
+<%- include('../partials/top') %>
+<% const canEdit = user.role !== 'courier'; const next = requests[0]; %>
+<div class="head">
+  <h1>Shipments overview</h1>
+  <% if (canEdit) { %><a class="more" href="/admin/shipments/new">New shipment<%- icon('down', 18, 2.2) %></a><% } %>
+</div>
+
+<div class="tabs">
+  <% [['active', 'Active'], ['delivered', 'Delivered'], ['history', 'History']].forEach(([key, label]) => { %>
+  <a class="<%= tab === key ? 'on' : '' %>" href="/admin?tab=<%= key %>"><%= label %></a>
+  <% }) %>
+</div>
+
+<div class="tiles">
+  <div class="t2 stack" style="gap:20px">
+    <div class="tiles">
+      <div class="tile t1 stack" style="gap:6px">
+        <div class="t-label">Shipping billed, <%= kpi.month %></div>
+        <div class="t-num"><%= money(kpi.billed, cur) %></div>
+        <svg viewBox="0 0 140 48" width="100%" height="48" aria-hidden="true" preserveAspectRatio="none"><polyline points="<%= spark %>" fill="none" stroke="#0E5B57" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline></svg>
+      </div>
+      <a class="tile tile-amber t1 stack" href="/admin/shipments?tab=attention" style="gap:4px;justify-content:center;align-items:center;text-align:center;color:var(--ink)">
+        <div class="b">Needs attention</div>
+        <div class="t-big" style="font-size:56px"><%= kpi.attention %></div>
+        <div class="t-note"><%= kpi.attention ? kpi.holds + ' customs hold, ' + kpi.noCost + ' without a cost' : 'Everything is on track' %></div>
+      </a>
+    </div>
+    <div class="tile tile-teal row" style="flex:1;padding:26px 28px;gap:18px">
+      <% if (kpi.oldest) { %>
+      <div style="flex:1 1 220px;min-width:0">
+        <div style="font-size:26px;font-weight:700;line-height:1.15">Longest open: <%= kpi.oldestDur %></div>
+        <div class="muted" style="font-size:14px;margin-top:6px"><%= kpi.oldest.shipment_no %>, <%= kpi.oldest.watch %> is <%= kpi.oldest.status.toLowerCase() %>, collected <%= fmtDay(kpi.oldest.collected_at) %>.</div>
+      </div>
+      <a class="btn btn-ghost" href="/admin/shipments/<%= kpi.oldest.id %>">Post update</a>
+      <% } else { %>
+      <div><div style="font-size:26px;font-weight:700">Nothing open</div><div class="muted" style="font-size:14px;margin-top:6px">Every shipment has been delivered.</div></div>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="tile tile-teal t1 stack" style="padding:26px 24px;gap:16px;flex-basis:200px">
+    <div class="b" style="opacity:.9">In transit now</div>
+    <div class="t-big"><%= kpi.moving %></div>
+    <div class="muted" style="font-size:14px;margin-top:-8px">watch<%= kpi.moving === 1 ? '' : 'es' %> between cities</div>
+    <div class="stack" style="gap:12px;margin-top:6px">
+      <% kpi.routes.forEach((r) => { %>
+      <div><div class="row between small b" style="flex-wrap:nowrap"><span><%= r.name %></span><span><%= r.n %></span></div><div class="bar"><i style="width:<%= r.pct %>%"></i></div></div>
+      <% }) %>
+    </div>
+    <a class="rb rb-amber" href="/admin/shipments?tab=active" aria-label="Open active shipments" style="margin-top:auto;align-self:flex-end"><%- icon('arrow', 18, 2.4) %></a>
+  </div>
+
+  <div class="t1 stack" style="gap:20px">
+    <div class="tile stack" style="padding:20px 22px;flex:1;justify-content:space-evenly">
+      <div class="row between"><div><div class="tiny muted b">Active shipments</div><div style="font-size:22px;font-weight:700"><%= kpi.active %></div></div><span class="dot"></span></div>
+      <div class="dash"></div>
+      <div class="row between"><div><div class="tiny muted b">Delivered this month</div><div style="font-size:22px;font-weight:700"><%= kpi.deliveredMonth %></div></div><span class="dot dot-amber"></span></div>
+      <div class="dash"></div>
+      <div class="row between"><div><div class="tiny muted b">Collection to delivery</div><div style="font-size:22px;font-weight:700"><%= kpi.avg %></div></div><span class="dot dot-coral"></span></div>
+    </div>
+    <div class="tile tile-teal stack" style="padding:20px 22px;gap:10px">
+      <div class="b" style="font-size:16px">Next collection</div>
+      <% if (next) { %>
+      <div class="small muted"><%= fmtDT(next.preferred_at) %>, <%= next.watch %> for <%= next.client_no %></div>
+      <div class="row between" style="margin-top:4px"><span class="av av-coral" style="border-color:var(--teal)"><%= initials(next.client_name) %></span><% if (canEdit) { %><a class="rb rb-amber rb-sm" href="/admin/shipments/new?request=<%= next.id %>" aria-label="Create the shipment for this collection"><%- icon('arrow', 16, 2.4) %></a><% } %></div>
+      <% } else { %><div class="small muted">No collection requests waiting.</div><% } %>
+    </div>
+  </div>
+</div>
+
+<% if (requests.length) { %>
+<div class="tile stack">
+  <div><h2>Collection requests</h2><p class="hint">Sent by clients from their portal. Create the shipment when you collect the watch.</p></div>
+  <% requests.forEach((q) => { %>
+  <div class="file-row">
+    <span class="ico ico-soft"><%- icon('truck') %></span>
+    <div class="grow"><div class="b"><%= q.watch %> · <%= q.client_no %> <%= q.client_name %></div><div class="small muted"><%= fmtDT(q.preferred_at) %><%= q.address ? ' · ' + q.address.split('\n').join(', ') : '' %><%= q.note ? ' · ' + q.note : '' %></div></div>
+    <% if (canEdit) { %>
+    <a class="btn btn-sm" href="/admin/shipments/new?request=<%= q.id %>">Create shipment</a>
+    <form method="post" action="/admin/requests/<%= q.id %>/dismiss"><button class="btn btn-sm btn-danger">Close</button></form>
+    <% } %>
+  </div>
+  <% }) %>
+</div>
+<% } %>
+
+<div class="head" style="margin-top:6px">
+  <h2 class="big"><%= listTitle %></h2>
+  <a class="more" href="/admin/shipments?tab=<%= tab %>">Check all<%- icon('right', 18, 2.2) %></a>
+</div>
+<% if (!rows.length) { %>
+<div class="tile empty"><%= tab === 'active' ? 'No shipments are moving right now.' : 'Nothing here yet.' %><% if (canEdit) { %> <a class="b" href="/admin/shipments/new">Create a shipment</a><% } %></div>
+<% } else { %>
+<div class="cards"><% rows.forEach((s) => { %><%- include('../partials/shipcard', { s }) %><% }) %></div>
+<% if (totalShown > rows.length) { %><p class="small muted">Showing <%= rows.length %> of <%= totalShown %>. <a class="b" href="/admin/shipments?tab=<%= tab %>">See them all</a></p><% } %>
+<% } %>
+
+<%- include('../partials/mid') %>
+<%- include('../partials/calendar') %>
+<%- include('../partials/bottom') %>

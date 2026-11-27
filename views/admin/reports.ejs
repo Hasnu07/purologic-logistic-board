@@ -1,0 +1,57 @@
+<%- include('../partials/top') %>
+<% const monthLabel = (m) => new Date(m + '-01T00:00').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); %>
+<div class="head">
+  <div><h1>Reports</h1><p class="sub">Time tracker, costs and volumes for the period you pick.</p></div>
+  <form class="row" method="get" action="/admin/reports">
+    <label class="sr" for="r-m">Period</label>
+    <select id="r-m" name="m" class="in" style="width:auto;min-width:190px"><option value="all">All time</option><% months.forEach((m) => { %><option value="<%= m %>" <%= m === period ? 'selected' : '' %>><%= monthLabel(m) %></option><% }) %></select>
+    <button class="btn">Show</button>
+  </form>
+</div>
+
+<div class="tiles">
+  <div class="tile tile-teal t1"><div class="t-label">Collection to delivery</div><div class="t-num"><%= kpi.avg %></div><div class="t-note">average, <%= kpi.deliveredCount %> delivered</div></div>
+  <div class="tile t1"><div class="t-label">Fastest</div><div class="t-num"><%= kpi.fastest ? dur(kpi.fastest.took) : '—' %></div><div class="t-note"><%= kpi.fastest ? kpi.fastest.shipment_no + ', ' + route(kpi.fastest) : 'nothing delivered in this period' %></div></div>
+  <div class="tile tile-amber t1"><div class="t-label">Longest open now</div><div class="t-num"><%= kpi.longest ? dur(kpi.longest.open) : '—' %></div><div class="t-note"><%= kpi.longest ? kpi.longest.shipment_no + ', ' + kpi.longest.status.toLowerCase() : 'nothing is open' %></div></div>
+</div>
+<div class="tiles">
+  <div class="tile t1"><div class="t-label">Shipments</div><div class="t-num"><%= kpi.total %></div><div class="t-note">collected in this period</div></div>
+  <div class="tile t1"><div class="t-label">Shipping billed</div><div class="t-num"><%= money(kpi.billed, cur) %></div><div class="t-note">costs entered so far</div></div>
+  <div class="tile t1"><div class="t-label">Customs holds</div><div class="t-num"><%= kpi.holds %></div><div class="t-note">shipments held at least once</div></div>
+</div>
+
+<section class="tile stack" style="padding:30px;gap:18px">
+  <div><h2>Time at each stage</h2><p class="hint">Average time a watch spends before moving to the next stage.</p></div>
+  <% stages.forEach((st) => { %>
+  <div class="stage"><span class="b" style="font-weight:600"><%= st.name %></span><div class="lane"><% if (st.avg) { %><i style="width:<%= Math.max(3, Math.round((st.avg / stageMax) * 100)) %>%"></i><% } %></div><span class="b right-t"><%= st.avg ? dur(st.avg) : '—' %></span></div>
+  <% }) %>
+</section>
+
+<section class="tile stack" style="padding:28px 24px">
+  <h2>By courier</h2>
+  <% if (!couriers.length) { %><p class="small muted">No shipments in this period.</p><% } else { %>
+  <div class="scroll"><table>
+    <thead><tr><th>Courier</th><th>Shipments</th><th>Average time</th><th>Holds</th><th>Average cost</th></tr></thead>
+    <tbody><% couriers.forEach((c) => { %>
+    <tr><td class="b"><%= c.name %></td><td><%= c.n %></td><td><%= c.avg === null ? '—' : dur(c.avg) %></td><td><%= c.holds %></td><td class="b"><%= money(c.cost, cur) %></td></tr>
+    <% }) %></tbody>
+  </table></div>
+  <% } %>
+</section>
+
+<%- include('../partials/mid') %>
+<div><h1 style="font-size:28px">This week</h1><p class="sub" style="margin-top:2px">Watches collected per day, last 7 days</p></div>
+<div class="bars">
+  <% week.forEach((d) => { %><div class="<%= d.today ? 'today' : '' %>"><span><%= d.n %></span><i style="height:<%= Math.round((d.n / weekMax) * 75) %>%"></i><small><%= d.label %></small></div><% }) %>
+</div>
+<h3>Slowest right now</h3>
+<% if (!slowest.length) { %><p class="small muted">Nothing is open.</p><% } %>
+<% slowest.forEach((x, i) => { %>
+<a class="note <%= i === 0 ? 'note-coral' : i === 1 ? 'note-amber' : '' %>" href="/admin/shipments/<%= x.id %>">
+  <span class="ico"><%- icon('clock') %></span>
+  <span class="grow"><span class="b" style="display:block;color:var(--ink)"><%= x.shipment_no %>, <%= x.status.toLowerCase() %></span><span class="s" style="display:block"><%= x.where || x.watch %></span></span>
+  <span class="b" style="color:var(--ink)"><%= dur(x.stuck) %></span>
+</a>
+<% }) %>
+<div class="panel"><p class="hint"><strong style="color:var(--ink)">How the time tracker counts.</strong> A stage starts when an update is posted and ends with the next one. Customs holds count toward transit. Weekends are included.</p></div>
+<%- include('../partials/bottom') %>

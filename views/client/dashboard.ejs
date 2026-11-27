@@ -1,0 +1,103 @@
+<%- include('../partials/top') %>
+<% const pct = (st) => Math.round((stepOf(st) / 5) * 100); %>
+<div class="head">
+  <div><h1>Hello, <%= user.name %></h1><p class="sub">Client <%= user.number %><%= user.city ? ', ' + user.city : '' %>. <%= active.length ? (active.length === 1 ? 'One watch is' : active.length + ' watches are') + ' on the way.' : 'No watches are on the way right now.' %></p></div>
+  <a class="btn btn-primary" href="/client/shipments#request"><%- icon('plus', 18, 2.2) %>Request a collection</a>
+</div>
+
+<div class="tiles">
+  <div class="t2 stack" style="gap:20px">
+    <div class="tiles">
+      <div class="tile t1 stack" style="gap:6px">
+        <div class="t-label">Spent on shipping, all time</div>
+        <div class="t-num"><%= money(total, cur) %></div>
+        <svg viewBox="0 0 140 48" width="100%" height="48" aria-hidden="true" preserveAspectRatio="none"><polyline points="<%= spark %>" fill="none" stroke="#0E5B57" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline></svg>
+      </div>
+      <div class="tile tile-amber t1 stack" style="gap:4px;justify-content:center;align-items:center;text-align:center">
+        <div class="b">Shipment wallet</div>
+        <div class="t-big" style="font-size:44px"><%= money(wallet.balance, cur) %></div>
+        <div class="t-note"><%= wallet.pending ? money(wallet.pending, cur) + ' pending for ' + wallet.pendingItems.map((p) => p.shipment_no).join(', ') : 'No pending charges' %></div>
+        <a class="btn btn-dark btn-sm" href="/client/wallet" style="margin-top:8px">Open wallet</a>
+      </div>
+    </div>
+    <div class="tile tile-teal row" style="flex:1;padding:26px 28px;gap:18px">
+      <% if (nearest) { %>
+      <div style="flex:1 1 220px;min-width:0">
+        <div style="font-size:26px;font-weight:700;line-height:1.15"><%= nearest.status === 'Out for delivery' ? 'Out for delivery' : 'Next to arrive' %></div>
+        <div class="muted" style="font-size:14px;margin-top:6px"><%= nearest.watch %>, <%= nearest.shipment_no %>, is <%= nearest.status.toLowerCase() %><%= nearest.last_location ? ' at ' + nearest.last_location : '' %>.<%= nearest.eta_note ? ' ' + nearest.eta_note + '.' : '' %></div>
+      </div>
+      <a class="btn btn-ghost" href="/client/shipments/<%= nearest.id %>">Track it</a>
+      <% } else { %>
+      <div><div style="font-size:26px;font-weight:700">Nothing in motion</div><div class="muted" style="font-size:14px;margin-top:6px">When we collect a watch from you it shows up here with live tracking.</div></div>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="tile tile-teal t1 stack" style="padding:26px 24px;gap:16px;flex-basis:200px">
+    <div class="b" style="opacity:.9">On the way to you</div>
+    <div class="t-big"><%= active.length %></div>
+    <div class="muted" style="font-size:14px;margin-top:-8px">watch<%= active.length === 1 ? '' : 'es' %> in motion</div>
+    <div class="stack" style="gap:12px;margin-top:6px">
+      <% active.slice(0, 3).forEach((s) => { %>
+      <div><div class="row between small b" style="flex-wrap:nowrap;gap:8px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><%= s.watch.split(' ').slice(0, 2).join(' ') %>, <%= s.shipment_no %></span><span class="nowrap"><%= s.status %></span></div><div class="bar"><i style="width:<%= pct(s.status) %>%"></i></div></div>
+      <% }) %>
+    </div>
+    <a class="rb rb-amber" href="/client/shipments" aria-label="Open my shipments" style="margin-top:auto;align-self:flex-end"><%- icon('arrow', 18, 2.4) %></a>
+  </div>
+
+  <div class="t1 stack" style="gap:20px">
+    <div class="tile stack" style="padding:20px 22px;flex:1;justify-content:space-evenly">
+      <div class="row between"><div><div class="tiny muted b">Delivered to you</div><div style="font-size:22px;font-weight:700"><%= delivered.length %></div></div><span class="dot"></span></div>
+      <div class="dash"></div>
+      <div class="row between"><div><div class="tiny muted b">Average cost per watch</div><div style="font-size:22px;font-weight:700"><%= costed.length ? money(total / costed.length, cur) : '—' %></div></div><span class="dot dot-amber"></span></div>
+      <div class="dash"></div>
+      <div class="row between"><div><div class="tiny muted b">Wallet situation</div><div style="font-size:19px;font-weight:700"><%= wallet.available >= 0 ? 'Good standing' : 'Top-up needed' %></div></div><span class="dot dot-coral"></span></div>
+    </div>
+    <div class="tile tile-teal stack" style="padding:20px 22px;gap:10px">
+      <div class="b" style="font-size:16px">Last collected</div>
+      <% if (newest) { %>
+      <div class="small muted"><%= newest.watch %>, <%= fmtDT(newest.collected_at) %></div>
+      <a class="rb rb-amber rb-sm" href="/client/shipments/<%= newest.id %>" aria-label="Open <%= newest.shipment_no %>" style="align-self:flex-end"><%- icon('arrow', 16, 2.4) %></a>
+      <% } else { %><div class="small muted">Nothing collected recently.</div><% } %>
+    </div>
+  </div>
+</div>
+
+<div class="head" style="margin-top:6px">
+  <h2 class="big">Active shipments</h2>
+  <a class="more" href="/client/shipments">Check all<%- icon('right', 18, 2.2) %></a>
+</div>
+<% if (!active.length) { %>
+<div class="tile empty">You have no shipments moving right now. Delivered watches are under My shipments.</div>
+<% } else { %>
+<div class="cards"><% active.slice(0, 4).forEach((s) => { %><%- include('../partials/shipcard', { s }) %><% }) %></div>
+<% } %>
+
+<div class="tiles">
+  <section class="tile t2 stack" style="padding:26px 20px">
+    <div class="row between" style="padding:0 6px"><h2>Shipment cost per watch</h2><span class="small muted b">Total spent <%= money(total, cur) %></span></div>
+    <% if (!costed.length) { %><p class="small muted" style="padding:0 6px">Shipping costs appear here once we confirm them.</p><% } else { %>
+    <div class="scroll"><table>
+      <thead><tr><th>Watch no.</th><th>Watch</th><th>Shipment</th><th>Date</th><th>Cost</th></tr></thead>
+      <tbody><% costed.slice(0, 5).forEach((c) => { %>
+      <tr><td class="no"><a href="/client/shipments/<%= c.id %>"><%= c.watch_no %></a></td><td><%= c.watch %></td><td><%= c.shipment_no %></td><td class="muted"><%= fmtDay(c.collected_at) %></td><td class="b"><%= money(c.cost, cur) %></td></tr>
+      <% }) %></tbody>
+    </table></div>
+    <% } %>
+  </section>
+  <section class="tile t1 stack" style="padding:26px;flex-basis:280px;gap:4px">
+    <div class="row between" style="margin-bottom:8px"><h2>Shipment documents</h2><a class="b small" href="/client/docs">All</a></div>
+    <% if (!docs.length) { %><p class="small muted">Air waybills, insurance certificates and customs papers appear here when we add them.</p><% } %>
+    <% docs.forEach((d) => { %>
+    <div class="file-row">
+      <span class="ico ico-soft"><%- icon('doc') %></span>
+      <div class="grow"><div class="b"><%= d.name %>, <%= d.shipment_no %></div><div class="small muted"><%= d.mime === 'application/pdf' ? 'PDF' : 'Image' %>, <%= fmtDate(d.created_at) %></div></div>
+      <a class="btn btn-sm" href="/files/doc/<%= d.id %>" target="_blank" rel="noopener">Download</a>
+    </div>
+    <% }) %>
+  </section>
+</div>
+
+<%- include('../partials/mid') %>
+<%- include('../partials/calendar') %>
+<%- include('../partials/bottom') %>

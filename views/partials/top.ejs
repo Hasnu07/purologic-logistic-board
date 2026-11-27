@@ -1,0 +1,45 @@
+<%- include('head') %>
+<body>
+<%
+  const isClient = user.role === 'client';
+  const on = (key) => (nav === key ? 'on' : '');
+  const sr = locals.search || (isClient
+    ? { action: '/client/shipments', placeholder: 'Search my shipments', tab: 'all' }
+    : { action: '/admin/shipments', placeholder: 'Search shipments', tab: 'history' });
+%>
+<div class="wrap">
+<div class="frame">
+<section class="left">
+<header class="top">
+  <a href="/" aria-label="<%= settings.company_name %> Logistic Board home"><span class="mark"></span></a>
+  <nav class="nav" aria-label="Main">
+  <% if (user.must_change) { %>
+    <a class="on" href="/account">My account</a>
+  <% } else if (isClient) { %>
+    <a class="<%= on('overview') %>" href="/client">Overview</a>
+    <a class="<%= on('shipments') %>" href="/client/shipments">My shipments</a>
+    <a class="<%= on('docs') %>" href="/client/docs">Documents</a>
+    <a class="<%= on('wallet') %>" href="/client/wallet">Wallet</a>
+  <% } else { %>
+    <% if (user.role !== 'courier') { %><a class="<%= on('overview') %>" href="/admin">Overview</a><% } %>
+    <% if (user.role !== 'admin') { %><a class="<%= on('update') %>" href="/admin/update">Update portal</a><% } %>
+    <a class="<%= on('shipments') %>" href="/admin/shipments">Shipments</a>
+    <a class="<%= on('watches') %>" href="/admin/watches">Watches</a>
+    <% if (user.role === 'admin') { %>
+    <a class="<%= on('clients') %>" href="/admin/clients">Clients</a>
+    <a class="<%= on('costs') %>" href="/admin/costs">Costs</a>
+    <a class="<%= on('users') %>" href="/admin/users">Users</a>
+    <% } %>
+    <% if (user.role !== 'courier') { %><a class="<%= on('reports') %>" href="/admin/reports">Reports</a><% } %>
+  <% } %>
+  </nav>
+  <% if (!user.must_change) { %>
+  <form class="search" method="get" action="<%= sr.action %>" role="search">
+    <label class="sr" for="q"><%= sr.placeholder %></label>
+    <% if (sr.tab) { %><input type="hidden" name="tab" value="<%= sr.tab %>"><% } %>
+    <input id="q" name="q" class="in" type="search" value="<%= locals.q || '' %>" placeholder="<%= sr.placeholder %>">
+    <button aria-label="Search"><%- icon('search', 20) %></button>
+  </form>
+  <% } %>
+</header>
+<% if (flash) { %><div class="flash <%= flash.type === 'err' ? 'flash-err' : '' %>" role="status"><%= flash.text %></div><% } %>

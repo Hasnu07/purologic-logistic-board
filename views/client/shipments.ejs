@@ -1,0 +1,54 @@
+<%- include('../partials/top') %>
+<div class="head">
+  <div><h1>My shipments</h1><p class="sub">Every watch we have collected from you, with its collected date and time, status and cost.</p></div>
+  <a class="btn btn-primary" href="#request"><%- icon('plus', 18, 2.2) %>Request a collection</a>
+</div>
+
+<div class="tabs">
+  <% [['active', 'Active'], ['delivered', 'Delivered'], ['all', 'History']].forEach(([key, label]) => { %>
+  <a class="<%= tab === key ? 'on' : '' %>" href="/client/shipments?tab=<%= key %><%= q ? '&q=' + encodeURIComponent(q) : '' %>"><%= label %><span class="n"><%= tabs[key].length %></span></a>
+  <% }) %>
+</div>
+
+<div class="tile table-tile">
+  <% if (!rows.length) { %><div class="empty"><%= q ? 'Nothing matches that search.' : tab === 'active' ? 'No shipments are moving right now.' : 'Nothing here yet.' %></div><% } else { %>
+  <div class="scroll"><table>
+    <thead><tr><th>Watch no.</th><th>Watch</th><th>Shipment</th><th>Collected</th><th>Status</th><th>Cost</th><th>Delivered</th><th><span class="sr">Open</span></th></tr></thead>
+    <tbody>
+    <% rows.forEach((r) => { %>
+    <tr>
+      <td class="no"><%= r.watch_no %></td>
+      <td class="b"><%= r.watch %></td>
+      <td><%= r.shipment_no %></td>
+      <td><%= fmtDT(r.collected_at) %></td>
+      <td><span class="<%= chipClass(r.status) %>"><%= r.status %></span></td>
+      <td class="b"><%= r.cost === null ? 'To confirm' : money(r.cost, cur) %></td>
+      <td class="muted"><%= r.delivered_at ? fmtDT(r.delivered_at) + (r.signed_by ? ', ' + r.signed_by : '') : '—' %></td>
+      <td><a class="rb rb-line rb-sm" href="/client/shipments/<%= r.id %>" aria-label="Track <%= r.shipment_no %>"><%- icon('arrow', 16, 2.2) %></a></td>
+    </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
+
+<%- include('../partials/mid') %>
+<div id="request"><h1 style="font-size:28px">Request a collection</h1><p class="sub" style="margin-top:2px">Tell us which watch and when. We confirm, collect it, and it appears in your shipments with its own watch number.</p></div>
+<form class="panel" method="post" action="/client/requests">
+  <div><label class="lb" for="r-watch">Watch</label><input id="r-watch" name="watch" class="in" placeholder="Brand and model" maxlength="120" required></div>
+  <div><label class="lb" for="r-at">Preferred date and time</label><input id="r-at" name="preferred_at" class="in" type="datetime-local" required></div>
+  <div><label class="lb" for="r-addr">Collection address</label><textarea id="r-addr" name="address" class="in" rows="3" maxlength="300"><%= user.address %></textarea></div>
+  <div><label class="lb" for="r-note">Note, optional</label><input id="r-note" name="note" class="in" maxlength="300" placeholder="Call on arrival"></div>
+  <button class="btn btn-primary btn-wide">Send request</button>
+</form>
+<% if (requests.length) { %>
+<h3>Waiting for us to confirm</h3>
+<% requests.forEach((q) => { %>
+<div class="note note-amber">
+  <span class="ico"><%- icon('truck') %></span>
+  <div class="grow"><div class="t" style="color:var(--ink)"><%= q.watch %></div><div class="s"><%= fmtDT(q.preferred_at) %></div></div>
+  <form method="post" action="/client/requests/<%= q.id %>/cancel"><button class="btn btn-sm">Cancel</button></form>
+</div>
+<% }) %>
+<% } %>
+<%- include('../partials/bottom') %>

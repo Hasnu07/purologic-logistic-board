@@ -1,0 +1,74 @@
+<%- include('../partials/top') %>
+<div class="head">
+  <div><h1>Shipment costs</h1><p class="sub">Entered by hand from the courier invoice. Clients see the cost per watch and their total spent.</p></div>
+  <a class="btn" href="/admin/shipments.csv?tab=history"><%- icon('download') %>Cost report</a>
+</div>
+
+<div class="tiles">
+  <div class="tile t1"><div class="t-label">Billed in <%= month %></div><div class="t-num"><%= money(billedSum, cur) %></div><div class="t-note"><%= billedCount %> shipment<%= billedCount === 1 ? '' : 's' %> with a cost</div></div>
+  <div class="tile tile-amber t1"><div class="t-label">Waiting for a cost</div><div class="t-num"><%= waiting.length %></div><div class="t-note"><%= waiting.length ? 'clients cannot see a total yet' : 'every shipment has a cost' %></div></div>
+  <div class="tile tile-teal t1"><div class="t-label">Average per watch</div><div class="t-num"><%= money(avg, cur) %></div><div class="t-note">this month, all couriers</div></div>
+  <div class="tile t1"><div class="t-label">Charged to wallets</div><div class="t-num"><%= money(walletSum, cur) %></div><div class="t-note"><%= billedSum ? Math.round((walletSum / billedSum) * 100) + '% of billed' : 'nothing billed yet' %></div></div>
+</div>
+
+<section class="tile stack" style="padding:28px 24px">
+  <div><h2>Waiting for a cost</h2><p class="hint">Type the amount and save. Costs paid from the wallet are deducted from the client's balance.</p></div>
+  <% if (!waiting.length) { %><p class="small muted">Nothing is waiting for a cost.</p><% } else { %>
+  <div class="scroll"><table>
+    <thead><tr><th>Shipment</th><th>Watch</th><th>Client</th><th>Courier</th><th>Cost, <%= cur %></th><th>Paid from</th><th><span class="sr">Save</span></th></tr></thead>
+    <tbody>
+    <% waiting.forEach((x) => { %>
+    <tr id="s<%= x.id %>">
+      <td class="b"><a href="/admin/shipments/<%= x.id %>" style="color:var(--ink)"><%= x.shipment_no %></a></td>
+      <td><span class="no"><%= x.watch_no %></span> <%= x.watch %></td>
+      <td><%= x.client_no %></td>
+      <td class="muted"><%= x.courier || 'Not booked' %></td>
+      <td><label class="sr" for="c<%= x.id %>">Cost for <%= x.shipment_no %></label><input id="c<%= x.id %>" form="f<%= x.id %>" name="cost" class="in" type="number" min="0" step="0.01" placeholder="0.00" required style="width:120px"></td>
+      <td><label class="sr" for="p<%= x.id %>">Paid from</label><select id="p<%= x.id %>" form="f<%= x.id %>" name="paid_from" class="in" style="width:120px"><% PAID_FROM.forEach((p) => { %><option><%= p %></option><% }) %></select></td>
+      <td><form id="f<%= x.id %>" method="post" action="/admin/cost"><input type="hidden" name="shipment_id" value="<%= x.id %>"><button class="rb" aria-label="Save cost for <%= x.shipment_no %>"><%- icon('tick', 18, 2.4) %></button></form></td>
+    </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+</section>
+
+<section class="tile stack" style="padding:28px 24px">
+  <div class="row between"><h2>Billed this month</h2><span class="small muted b">Last <%= billed.length %> of <%= billedCount %></span></div>
+  <% if (!billed.length) { %><p class="small muted">No costs entered for shipments collected this month.</p><% } else { %>
+  <div class="scroll"><table>
+    <thead><tr><th>Shipment</th><th>Watch</th><th>Client</th><th>Courier</th><th>Collected</th><th>Cost</th><th>Charged to</th></tr></thead>
+    <tbody>
+    <% billed.forEach((x) => { const pending = x.paid_from === 'Wallet' && !isClosed(x.status); %>
+    <tr>
+      <td class="b"><a href="/admin/shipments/<%= x.id %>" style="color:var(--ink)"><%= x.shipment_no %></a></td>
+      <td><span class="no"><%= x.watch_no %></span> <%= x.watch %></td>
+      <td><%= x.client_no %></td>
+      <td class="muted"><%= x.courier || '—' %></td>
+      <td class="muted"><%= fmtDT(x.collected_at) %></td>
+      <td class="b"><%= money(x.cost, cur) %></td>
+      <td><span class="chip <%= pending ? 'chip-amber' : '' %>"><%= x.paid_from || 'Not set' %><%= pending ? ', pending' : '' %></span></td>
+    </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+</section>
+
+<%- include('../partials/mid') %>
+<div><h1 style="font-size:28px">Enter a cost</h1><p class="sub" style="margin-top:2px">For any shipment, from the courier invoice.</p></div>
+<form class="panel" method="post" action="/admin/cost">
+  <% if (!options.length) { %><p class="small muted">No shipments yet.</p><% } else { %>
+  <div><label class="lb" for="c-ship">Shipment</label>
+    <select id="c-ship" name="shipment_id" class="in" required><% options.forEach((x) => { %><option value="<%= x.id %>" <%= x.id === pick ? 'selected' : '' %>><%= x.shipment_no %>, <%= x.watch_no %>, <%= x.watch %><%= x.cost !== null ? ', ' + money(x.cost, cur) : '' %></option><% }) %></select></div>
+  <div><label class="lb" for="c-courier">Courier</label><input id="c-courier" name="courier" class="in" list="couriers" placeholder="Ferrari Group"><datalist id="couriers"><% COURIERS.forEach((c) => { %><option value="<%= c %>"><% }) %></datalist></div>
+  <div><label class="lb" for="c-awb">AWB or tracking no.</label><input id="c-awb" name="awb" class="in" placeholder="7788 1234 5566"></div>
+  <div class="grid2">
+    <div><label class="lb" for="c-cost">Cost, <%= cur %></label><input id="c-cost" name="cost" class="in" type="number" min="0" step="0.01" placeholder="0.00" required></div>
+    <div><label class="lb" for="c-paid">Paid from</label><select id="c-paid" name="paid_from" class="in"><% PAID_FROM.forEach((p) => { %><option><%= p %></option><% }) %></select></div>
+  </div>
+  <button class="btn btn-primary btn-wide">Save cost</button>
+  <p class="hint">Saving here replaces the courier and AWB on that shipment with what you type above.</p>
+  <% } %>
+</form>
+<%- include('../partials/bottom') %>

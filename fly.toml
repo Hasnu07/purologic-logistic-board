@@ -1,0 +1,34 @@
+# Fly.io hosting. One machine only: the database is a file on the "data" volume,
+# so this app must not be scaled to several machines.
+app = 'purologic-board'
+primary_region = 'fra'
+
+[env]
+  PORT = '8080'
+  DATA_DIR = '/data'
+  TRUST_PROXY = '1'
+  TZ = 'Asia/Karachi' # times on the board are shown in this time zone
+
+[mounts]
+  source = 'data'
+  destination = '/data'
+  initial_size = '10gb'
+  snapshot_retention = 14
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'off'
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    method = 'GET'
+    path = '/healthz'
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '10s'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '1gb'

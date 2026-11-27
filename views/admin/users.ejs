@@ -1,0 +1,80 @@
+<%- include('../partials/top', { search: { action: '/admin/users', placeholder: 'Search users' } }) %>
+<% const roleChip = { admin: 'chip chip-teal', staff: 'chip', courier: 'chip chip-amber', client: 'chip chip-coral-soft' }; const roleAv = { admin: 'av av-teal', staff: 'av', courier: 'av av-amber', client: 'av av-coral' }; %>
+<div class="head">
+  <div><h1>Users and logins</h1><p class="sub"><%= counts.all %> account<%= counts.all === 1 ? '' : 's' %>, <%= online %> signed in now. Multi-login is allowed on every role.</p></div>
+  <a class="btn btn-primary" href="#invite"><%- icon('plus', 18, 2.2) %>Add user</a>
+</div>
+<% if (error) { %><div class="flash flash-err" role="alert"><%= error %></div><% } %>
+
+<div class="tiles">
+  <div class="tile tile-teal t1"><div class="t-label">Next client number</div><div class="t-num" style="font-size:36px"><%= numbering.client.next %></div><div class="t-note"><%= numbering.client.issued %> issued, never reused</div></div>
+  <div class="tile tile-amber t1"><div class="t-label">Next watch number</div><div class="t-num" style="font-size:36px"><%= numbering.watch.next %></div><div class="t-note"><%= numbering.watch.issued %> issued, printed on every sheet</div></div>
+  <div class="tile t1"><div class="t-label">Next shipment number</div><div class="t-num" style="font-size:36px"><%= numbering.shipment.next %></div><div class="t-note"><%= numbering.shipment.issued %> issued</div></div>
+</div>
+
+<div class="tabs">
+  <% [['all', 'All'], ['admin', 'Admins'], ['staff', 'Staff'], ['courier', 'Couriers'], ['client', 'Clients']].forEach(([key, label]) => { %>
+  <a class="<%= role === key ? 'on' : '' %>" href="/admin/users<%= key === 'all' ? '' : '?role=' + key %>"><%= label %><span class="n"><%= counts[key] %></span></a>
+  <% }) %>
+</div>
+
+<div class="tile table-tile">
+  <% if (!rows.length) { %><div class="empty">No users match.</div><% } else { %>
+  <div class="scroll"><table>
+    <thead><tr><th>User</th><th>Role</th><th>Unique no.</th><th>Last login</th><th>Sessions</th><th>Status</th><th><span class="sr">Edit</span></th></tr></thead>
+    <tbody>
+    <% rows.forEach((u) => { const st = u.status === 'suspended' ? 'Suspended' : u.last_login ? 'Active' : 'Invited'; %>
+    <tr>
+      <td><div class="row" style="flex-wrap:nowrap;gap:12px"><span class="<%= roleAv[u.role] %>" style="width:44px;height:44px"><%= initials(u.name) %></span><span><span class="b" style="display:block"><%= u.name %></span><span class="small muted" style="display:block"><%= u.email %></span></span></div></td>
+      <td><span class="<%= roleChip[u.role] %>"><%= ROLE_LABEL[u.role] %></span></td>
+      <td class="no"><%= u.number %></td>
+      <td class="muted"><%= u.last_login ? fmtDT(u.last_login) : 'Never' %></td>
+      <td><%= u.session_count ? u.session_count + (u.session_count === 1 ? ' device' : ' devices') : 'None' %></td>
+      <td><span class="status-line"><i class="dot <%= st === 'Suspended' ? 'dot-coral' : st === 'Invited' ? 'dot-amber' : '' %>"></i><%= st %></span></td>
+      <td><a class="rb rb-line rb-sm" href="/admin/users/<%= u.id %>" aria-label="Edit <%= u.name %>"><%- icon('pencil', 16, 2.2) %></a></td>
+    </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
+
+<form id="settings" class="tile stack" method="post" action="/admin/settings" style="padding:28px">
+  <div><h2>Numbering and settings</h2><p class="hint">Numbers are issued automatically, never reused, and printed on every document. New prefixes apply from the next number.</p></div>
+  <div class="grid3">
+    <div><label class="lb" for="n-client">Client prefix</label><input id="n-client" name="prefix_client" class="in" value="<%= settings.prefix_client %>" maxlength="6"></div>
+    <div><label class="lb" for="n-watch">Watch prefix</label><input id="n-watch" name="prefix_watch" class="in" value="<%= settings.prefix_watch %>" maxlength="6"></div>
+    <div><label class="lb" for="n-ship">Shipment prefix</label><input id="n-ship" name="prefix_shipment" class="in" value="<%= settings.prefix_shipment %>" maxlength="6"></div>
+  </div>
+  <div class="grid2">
+    <div><label class="lb" for="s-co">Company name</label><input id="s-co" name="company_name" class="in" value="<%= settings.company_name %>" maxlength="60"></div>
+    <div><label class="lb" for="s-cur">Currency</label><select id="s-cur" name="currency" class="in"><% CURRENCIES.forEach((c) => { %><option <%= c === settings.currency ? 'selected' : '' %>><%= c %></option><% }) %></select></div>
+  </div>
+  <div><label class="lb" for="s-addr">Sender address, printed on labels</label><textarea id="s-addr" name="sender_address" class="in" rows="3" placeholder="Office address&#10;Phone, email"><%= settings.sender_address %></textarea></div>
+  <div><button class="btn">Save settings</button></div>
+</form>
+
+<%- include('../partials/mid') %>
+<div><h1 style="font-size:28px">Signed in now</h1><p class="sub" style="margin-top:2px">One account can be open on several devices. End any session from here.</p></div>
+<% sessions.forEach((x) => { %>
+<div class="note <%= Date.now() - new Date(x.last_seen) < 900000 ? '' : 'note-plain' %>">
+  <span class="av av-teal" style="width:44px;height:44px"><%= initials(x.name) %></span>
+  <div class="grow"><div class="b" style="color:var(--ink)"><%= x.name %>, <%= x.number %></div><div class="s"><%= x.device.replace(' · ', ' on ') %>, since <%= fmtDT(x.created_at) %><%= x.id === currentSession ? ', this device' : '' %></div></div>
+  <form method="post" action="/admin/sessions/<%= x.id %>/end"><button class="btn btn-sm"><%= x.id === currentSession ? 'Sign out' : 'End' %></button></form>
+</div>
+<% }) %>
+
+<form id="invite" class="panel" method="post" action="/admin/users">
+  <div><h2>Add a user</h2><p class="hint">Clients get their unique number straight away. Staff and couriers post updates, admins manage costs and users.</p></div>
+  <div><label class="lb" for="i-name">Name</label><input id="i-name" name="name" class="in" value="<%= v.name || '' %>" required></div>
+  <div><label class="lb" for="i-email">Email</label><input id="i-email" name="email" class="in" type="email" value="<%= v.email || '' %>" placeholder="name@company.com" required></div>
+  <div><label class="lb" for="i-role">Role</label><select id="i-role" name="role" class="in"><% ['client', 'staff', 'courier', 'admin'].forEach((k) => { %><option value="<%= k %>" <%= v.role === k ? 'selected' : '' %>><%= ROLE_LABEL[k] %></option><% }) %></select></div>
+  <div class="grid2">
+    <div><label class="lb" for="i-phone">Phone</label><input id="i-phone" name="phone" class="in" value="<%= v.phone || '' %>"></div>
+    <div><label class="lb" for="i-city">City</label><input id="i-city" name="city" class="in" value="<%= v.city || '' %>"></div>
+  </div>
+  <div><label class="lb" for="i-addr">Delivery address, for clients</label><textarea id="i-addr" name="address" class="in" rows="3" placeholder="Street&#10;Postcode City&#10;COUNTRY"><%= v.address || '' %></textarea></div>
+  <button class="btn btn-primary">Create account</button>
+  <p class="hint">No email is sent. You are shown a temporary password once, to pass on. The user must choose their own at first sign-in.</p>
+</form>
+<%- include('../partials/bottom') %>

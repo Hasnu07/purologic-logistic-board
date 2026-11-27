@@ -1,0 +1,21 @@
+<%- include('partials/top') %>
+<div><h1>My account</h1><p class="sub"><%= user.name %>, <%= ROLE_LABEL[user.role].toLowerCase() %> <%= user.number %>, <%= user.email %></p></div>
+<% if (user.must_change) { %><div class="flash">Welcome. Please choose your own password before you continue.</div><% } %>
+<% if (error) { %><div class="flash flash-err" role="alert"><%= error %></div><% } %>
+<form class="tile stack" method="post" action="/account/password" style="padding:28px;max-width:560px">
+  <h2>Change password</h2>
+  <div><label class="lb" for="cur"><%= user.must_change ? 'Temporary password you were given' : 'Current password' %></label><input id="cur" name="current" class="in" type="password" autocomplete="current-password" required></div>
+  <div><label class="lb" for="pw">New password, at least 8 characters</label><input id="pw" name="password" class="in" type="password" autocomplete="new-password" minlength="8" required></div>
+  <div><label class="lb" for="pw2">Repeat new password</label><input id="pw2" name="password2" class="in" type="password" autocomplete="new-password" minlength="8" required></div>
+  <div><button class="btn btn-primary">Save password</button></div>
+  <p class="hint">Saving a new password signs out your other devices.</p>
+</form>
+<%- include('partials/mid') %>
+<div><h1 style="font-size:28px">Signed in on</h1><p class="sub" style="margin-top:2px">Your account can be open on several devices. End any you do not recognise.</p></div>
+<% sessions.forEach((x) => { %>
+<div class="note <%= x.id === currentSession ? '' : 'note-plain' %>">
+  <div class="grow"><div class="b" style="color:var(--ink)"><%= x.device.replace(' · ', ' on ') %><%= x.id === currentSession ? ', this device' : '' %></div><div class="s">since <%= fmtDT(x.created_at) %>, last active <%= fmtDT(x.last_seen) %></div></div>
+  <form method="post" action="/account/sessions/<%= x.id %>/end"><button class="btn btn-sm"><%= x.id === currentSession ? 'Sign out' : 'End' %></button></form>
+</div>
+<% }) %>
+<%- include('partials/bottom') %>

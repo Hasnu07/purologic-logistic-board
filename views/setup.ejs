@@ -1,0 +1,19 @@
+<%- include('partials/head') %>
+<body>
+<div class="wrap"><div class="frame">
+<%- include('partials/auth_side') %>
+<section class="auth-main">
+  <form class="auth-card" method="post" action="/setup">
+    <div><h1>Set up your board</h1><p class="sub" style="font-size:17px">First run: create the owner admin account. You add staff and clients afterwards in Users.</p></div>
+    <% if (error) { %><div class="flash flash-err" role="alert"><%= error %></div><% } %>
+    <div><label class="lb" for="company">Company name</label><input id="company" name="company" class="in" value="<%= v.company || settings.company_name %>"></div>
+    <div><label class="lb" for="name">Your name</label><input id="name" name="name" class="in" value="<%= v.name || '' %>" required></div>
+    <div><label class="lb" for="email">Email</label><input id="email" name="email" class="in" type="email" value="<%= v.email || '' %>" autocomplete="username" required></div>
+    <div><label class="lb" for="pw">Password, at least 8 characters</label><input id="pw" name="password" class="in" type="password" autocomplete="new-password" minlength="8" required></div>
+    <div><label class="lb" for="pw2">Repeat password</label><input id="pw2" name="password2" class="in" type="password" autocomplete="new-password" minlength="8" required></div>
+    <button class="btn btn-primary btn-wide">Create admin account</button>
+  </form>
+</section>
+</div></div>
+</body>
+</html>

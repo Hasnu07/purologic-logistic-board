@@ -1,0 +1,65 @@
+<%- include('../partials/top', { search: { action: '/admin/clients', placeholder: 'Search clients' } }) %>
+<div class="head">
+  <div><h1>Clients</h1><p class="sub">Every client has one number for life. It goes on every shipment, document and label.</p></div>
+  <a class="btn btn-primary" href="/admin/users?add=client#invite"><%- icon('plus', 18, 2.2) %>Add client</a>
+</div>
+
+<div class="tiles">
+  <div class="tile t1"><div class="t-label">Clients</div><div class="t-num"><%= kpi.clients %></div><div class="t-note"><%= numbering.client.issued %> numbers issued since launch</div></div>
+  <div class="tile tile-teal t1"><div class="t-label">With active shipments</div><div class="t-num"><%= kpi.withActive %></div><div class="t-note"><%= kpi.moving %> watch<%= kpi.moving === 1 ? '' : 'es' %> moving</div></div>
+  <div class="tile tile-amber t1"><div class="t-label">Wallets to top up</div><div class="t-num"><%= kpi.low %></div><div class="t-note">balance below pending charges</div></div>
+  <div class="tile t1"><div class="t-label">Spent on shipping</div><div class="t-num"><%= money(kpi.spent, cur) %></div><div class="t-note">across <%= kpi.shipments %> shipment<%= kpi.shipments === 1 ? '' : 's' %></div></div>
+</div>
+
+<div class="tabs">
+  <% [['all', 'All clients'], ['active', 'With active shipments'], ['low', 'Wallet low']].forEach(([key, name]) => { %>
+  <a class="<%= tab === key ? 'on' : '' %>" href="/admin/clients?tab=<%= key %><%= q ? '&q=' + encodeURIComponent(q) : '' %>"><%= name %><span class="n"><%= tabs[key].length %></span></a>
+  <% }) %>
+</div>
+
+<div class="tile table-tile">
+  <% if (!rows.length) { %><div class="empty"><%= q ? 'No client matches that search.' : 'No clients here yet.' %></div><% } else { %>
+  <div class="scroll"><table>
+    <thead><tr><th>Client no.</th><th>Client</th><th>City</th><th>Active</th><th>Delivered</th><th>Total spent</th><th>Wallet</th><th>Status</th><th><span class="sr">Open</span></th></tr></thead>
+    <tbody>
+    <% rows.forEach((u) => { %>
+    <tr>
+      <td class="no"><%= u.number %></td>
+      <td><div class="row" style="flex-wrap:nowrap;gap:12px"><span class="<%= avClass(u.id) %>" style="width:44px;height:44px"><%= initials(u.name) %></span><span><span class="b" style="display:block"><%= u.name %></span><span class="small muted" style="display:block"><%= u.email %></span></span></div></td>
+      <td class="muted"><%= u.city || '—' %></td>
+      <td><%= u.active %></td>
+      <td><%= u.delivered %></td>
+      <td class="b"><%= money(u.spent, cur) %></td>
+      <td><span class="chip <%= u.wallet.available < 0 ? 'chip-coral-soft' : u.wallet.balance > 0 ? 'chip-soft2' : 'chip-amber' %>"><%= money(u.wallet.balance, cur) %></span></td>
+      <td><span class="status-line"><i class="dot <%= u.state === 'Suspended' ? 'dot-coral' : u.state === 'Invited' ? 'dot-amber' : '' %>"></i><%= u.state %></span></td>
+      <td><a class="rb rb-line rb-sm" href="/admin/users/<%= u.id %>" aria-label="Open <%= u.name %>"><%- icon('arrow', 16, 2.2) %></a></td>
+    </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
+
+<%- include('../partials/mid') %>
+<div><h1 style="font-size:28px">Top clients</h1><p class="sub" style="margin-top:2px">By shipping spend, all time</p></div>
+<% if (!top.length) { %><p class="small muted">No shipping costs recorded yet.</p><% } %>
+<% top.forEach((u) => { %>
+<div class="row" style="flex-wrap:nowrap;gap:14px">
+  <span class="<%= avClass(u.id) %>" style="width:44px;height:44px"><%= initials(u.name) %></span>
+  <div class="grow"><div class="row between b" style="flex-wrap:nowrap"><span><%= u.name %></span><span><%= money(u.spent, cur) %></span></div><div class="bar on-light"><i style="width:<%= Math.round((u.spent / topMax) * 100) %>%"></i></div></div>
+</div>
+<% }) %>
+<h3 style="margin-top:6px">Wallets to top up</h3>
+<% if (!low.length) { %><p class="small muted">Every wallet covers its pending charges.</p><% } %>
+<% low.forEach((u) => { %>
+<div class="note note-amber">
+  <div class="grow"><div class="t" style="color:var(--ink);font-size:17px"><%= u.name %>, <%= u.number %></div><div class="s">Balance <%= money(u.wallet.balance, cur) %>, pending charges <%= money(u.wallet.pending, cur) %></div></div>
+  <a class="btn btn-sm" href="/admin/users/<%= u.id %>#wallet">Top up</a>
+</div>
+<% }) %>
+<div class="panel">
+  <h3>Client numbers</h3>
+  <p class="hint">Next number <%= numbering.client.next %>. Numbers are issued when the client is added and never reused, even for closed accounts.</p>
+  <a class="b" href="/admin/users#settings">Numbering settings</a>
+</div>
+<%- include('../partials/bottom') %>
