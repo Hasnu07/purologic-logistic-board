@@ -15,8 +15,8 @@
   <input type="hidden" name="tab" value="<%= tab %>"><% if (q) { %><input type="hidden" name="q" value="<%= q %>"><% } %>
   <div style="flex:1 1 150px"><label class="sr" for="f-courier">Courier</label><select id="f-courier" name="courier" class="in"><option value="">All couriers</option><% couriers.forEach((c) => { %><option <%= c === courier ? 'selected' : '' %>><%= c %></option><% }) %></select></div>
   <div style="flex:1 1 150px"><label class="sr" for="f-route">Route</label><select id="f-route" name="route" class="in"><option value="">All routes</option><% routes.forEach((c) => { %><option <%= c === route ? 'selected' : '' %>><%= c %></option><% }) %></select></div>
-  <div style="flex:1 1 140px"><label class="sr" for="f-from">Collected from</label><input id="f-from" name="from" type="date" class="in" value="<%= from %>" title="Collected from"></div>
-  <div style="flex:1 1 140px"><label class="sr" for="f-to">Collected to</label><input id="f-to" name="to" type="date" class="in" value="<%= to %>" title="Collected to"></div>
+  <div style="flex:1 1 140px"><label class="sr" for="f-from">Received from</label><input id="f-from" name="from" type="date" class="in" value="<%= from %>" title="Received from"></div>
+  <div style="flex:1 1 140px"><label class="sr" for="f-to">Received to</label><input id="f-to" name="to" type="date" class="in" value="<%= to %>" title="Received to"></div>
   <button class="btn">Filter</button>
   <% if (qs) { %><a class="b" href="/admin/shipments?tab=<%= tab %>">Clear</a><% } %>
 </form>
@@ -24,7 +24,7 @@
 <div class="tile table-tile">
   <% if (!rows.length) { %><div class="empty"><%= qs ? 'Nothing matches these filters.' : 'Nothing here yet.' %></div><% } else { %>
   <div class="scroll"><table>
-    <thead><tr><th>Shipment</th><th>Watch no.</th><th>Watches</th><th>Client</th><th>Collected</th><th>Status</th><% if (showCost) { %><th>Cost</th><% } %><th><span class="sr">Open</span></th></tr></thead>
+    <thead><tr><th>Shipment</th><th>Watch no.</th><th>Watches</th><th>Client</th><th>Received</th><th>Status</th><% if (showCost) { %><th>Cost</th><% } %><th><span class="sr">Open</span></th></tr></thead>
     <tbody>
     <% rows.forEach((r) => { %>
     <tr>

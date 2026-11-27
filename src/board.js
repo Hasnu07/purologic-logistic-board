@@ -51,7 +51,7 @@ function today(clientId, requests, base) {
     .all(start.toISOString(), end.toISOString(), ...(clientId ? [clientId] : []));
   const items = rows.map((e) => ({
     at: e.created_at, time: F.fmtTime(e.created_at), tone: F.toneClass(e.status),
-    icon: e.status === 'Collected' ? 'truck' : e.status === 'Delivered' ? 'check' : e.status === 'Handed to courier' ? 'briefcase' : 'pin',
+    icon: F.stepOf(e.status) === 1 ? 'truck' : e.status === 'Delivered' ? 'check' : F.isMoving(e.status) ? 'briefcase' : 'pin',
     title: `${e.status}: ${e.watch}${e.watch_count > 1 ? ' + ' + (e.watch_count - 1) + ' more' : ''}`, sub: [e.shipment_no, e.location].filter(Boolean).join(', '), href: `${base}/shipments/${e.sid}`
   }));
   for (const r of requests) {

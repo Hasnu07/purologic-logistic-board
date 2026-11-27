@@ -7,7 +7,8 @@
   const wval = (w, k) => (w[k] === null || w[k] === undefined || Number.isNaN(w[k]) ? '' : w[k]);
   const accOf = (w) => (Array.isArray(w.accessories) ? w.accessories : []);
   const hasAcc = (w, label) => accOf(w).some((a) => a.label === label && a.ok);
-  const otherAcc = (w) => accOf(w).filter((a) => !STD_ACCESSORIES.includes(a.label)).map((a) => a.label).join(', ');
+  const listFor = (w) => accessoriesFor(w.brand || '');
+  const otherAcc = (w) => accOf(w).filter((a) => a.ok && !listFor(w).includes(a.label)).map((a) => a.label).join(', ');
 %>
 <div>
   <h1><%= sh ? 'Edit shipment' : 'New shipment' %></h1>
@@ -39,7 +40,14 @@
           <button type="button" class="btn btn-sm btn-danger" data-remove <%= watches.length < 2 ? 'hidden' : '' %>>Remove</button>
         </div>
         <input type="hidden" name="watch_id_<%= i %>" value="<%= w.id || '' %>">
-        <div><label class="lb" for="f-watch_<%= i %>">Brand and model</label><input id="f-watch_<%= i %>" name="watch_<%= i %>" class="in" value="<%= wval(w, 'watch') %>" placeholder="Rolex Submariner 126610LN" required></div>
+        <div class="grid2">
+          <div><label class="lb" for="f-brand_<%= i %>">Brand</label>
+            <select id="f-brand_<%= i %>" name="brand_<%= i %>" class="in" data-brand>
+              <option value="">Choose a brand</option>
+              <% BRANDS.forEach((b) => { %><option value="<%= b %>" <%= (w.brand || '') === b ? 'selected' : '' %>><%= b %></option><% }) %>
+            </select></div>
+          <div><label class="lb" for="f-watch_<%= i %>">Model</label><input id="f-watch_<%= i %>" name="watch_<%= i %>" class="in" value="<%= wval(w, 'watch') %>" placeholder="Submariner 126610LN" required></div>
+        </div>
         <div class="grid3">
           <div><label class="lb" for="f-ref_<%= i %>">Reference</label><input id="f-ref_<%= i %>" name="reference_<%= i %>" class="in" value="<%= wval(w, 'reference') %>" placeholder="126610LN"></div>
           <div><label class="lb" for="f-serial_<%= i %>">Serial</label><input id="f-serial_<%= i %>" name="serial_<%= i %>" class="in" value="<%= wval(w, 'serial') %>" placeholder="Serial number"></div>
@@ -49,9 +57,17 @@
           <div><label class="lb" for="f-value_<%= i %>">Declared value, <%= cur %></label><input id="f-value_<%= i %>" name="value_<%= i %>" class="in" type="number" min="0" step="0.01" value="<%= wval(w, 'value') %>" placeholder="0.00"></div>
           <div><label class="lb" for="f-ins_<%= i %>">Insurance</label><input id="f-ins_<%= i %>" name="insurance_<%= i %>" class="in" value="<%= wval(w, 'insurance') %>" placeholder="Insured to 15,000"></div>
         </div>
-        <div><span class="lb">Accessories received with this watch</span>
-          <div class="checks"><% STD_ACCESSORIES.forEach((a) => { %><label><input type="checkbox" name="acc_<%= i %>" value="<%= a %>" <%= hasAcc(w, a) ? 'checked' : '' %>><%= a %></label><% }) %></div></div>
-        <div><label class="lb" for="f-other_<%= i %>">Other accessories, separated by commas</label><input id="f-other_<%= i %>" name="acc_other_<%= i %>" class="in" value="<%= otherAcc(w) %>" placeholder="Bezel protector, service papers"></div>
+        <div><span class="lb">What came with this watch<span class="hint" style="font-weight:400"> &middot; the list follows the brand</span></span>
+          <div class="checks" data-acc><% listFor(w).forEach((a) => { %><label><input type="checkbox" name="acc_<%= i %>" value="<%= a %>" <%= hasAcc(w, a) ? 'checked' : '' %>><%= a %></label><% }) %></div></div>
+        <div><label class="lb" for="f-other_<%= i %>">Anything else, separated by commas</label><input id="f-other_<%= i %>" name="acc_other_<%= i %>" class="in" value="<%= otherAcc(w) %>" placeholder="Bezel protector, service papers"></div>
+        <div class="grid2">
+          <div><label class="lb" for="f-cond_<%= i %>">Condition</label>
+            <select id="f-cond_<%= i %>" name="condition_<%= i %>" class="in">
+              <option value="">Not inspected yet</option>
+              <% CONDITIONS.forEach((c) => { %><option value="<%= c %>" <%= (w.condition || '') === c ? 'selected' : '' %>><%= c %></option><% }) %>
+            </select></div>
+          <div><label class="lb" for="f-condnote_<%= i %>">Condition notes</label><input id="f-condnote_<%= i %>" name="condition_note_<%= i %>" class="in" maxlength="300" value="<%= wval(w, 'condition_note') %>" placeholder="Light scratch on the clasp"></div>
+        </div>
       </div>
       <% }) %>
     </div>
@@ -59,10 +75,10 @@
   </section>
 
   <section class="tile stack">
-    <div class="row" style="flex-wrap:nowrap;align-items:flex-start"><span class="stepn">3</span><div><h3>Collection</h3><p class="hint">Where and when the watch was picked up. This is the collected date and time the client sees.</p></div></div>
+    <div class="row" style="flex-wrap:nowrap;align-items:flex-start"><span class="stepn">3</span><div><h3>Received</h3><p class="hint">Where and when the watches reached us. This is the date and time the client sees.</p></div></div>
     <div class="grid2">
-      <div><label class="lb" for="f-coll">Collected date and time</label><input id="f-coll" name="collected_at" class="in" type="datetime-local" value="<%= toLocalInput(v.collected_at) %>" required></div>
-      <% if (!sh) { %><div><label class="lb" for="f-from">Collected at</label><input id="f-from" name="collected_from" class="in" value="<%= val('collected_from') %>" placeholder="Client, Dubai Marina"></div><% } %>
+      <div><label class="lb" for="f-coll">Received date and time</label><input id="f-coll" name="collected_at" class="in" type="datetime-local" value="<%= toLocalInput(v.collected_at) %>" required></div>
+      <% if (!sh) { %><div><label class="lb" for="f-from">Received at</label><input id="f-from" name="collected_from" class="in" value="<%= val('collected_from') %>" placeholder="Client, Dubai Marina"></div><% } %>
     </div>
     <div class="grid2">
       <div><label class="lb" for="f-origin">From (city)</label><input id="f-origin" name="origin" class="in" value="<%= val('origin') %>" placeholder="Dubai"></div>
@@ -123,5 +139,7 @@
     <li>All the watches here travel as one shipment, with one cost.</li>
   </ul>
 </div>
+<script>window.__BRAND_ACC = <%- JSON.stringify(Object.assign({ '': STD_ACCESSORIES, Other: STD_ACCESSORIES }, BRAND_ACCESSORIES)) %>;</script>
 <script src="/static/form.js" defer></script>
+<script src="/static/brand.js" defer></script>
 <%- include('../partials/bottom') %>

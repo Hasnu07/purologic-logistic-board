@@ -25,7 +25,7 @@
     <div class="tile tile-teal row" style="flex:1;padding:26px 28px;gap:18px">
       <% if (nearest) { %>
       <div style="flex:1 1 220px;min-width:0">
-        <div style="font-size:26px;font-weight:700;line-height:1.15"><%= nearest.status === 'Out for delivery' ? 'Out for delivery' : 'Next to arrive' %></div>
+        <div style="font-size:26px;font-weight:700;line-height:1.15"><%= isMoving(nearest.status) ? 'On the way' : 'Next to arrive' %></div>
         <div class="muted" style="font-size:14px;margin-top:6px"><%= nearest.watch_label %>, <%= nearest.shipment_no %>, is <%= nearest.status.toLowerCase() %><%= nearest.last_location ? ' at ' + nearest.last_location : '' %>.<%= nearest.eta_note ? ' ' + nearest.eta_note + '.' : '' %></div>
       </div>
       <a class="btn btn-ghost" href="/client/shipments/<%= nearest.id %>">Track it</a>

@@ -1,7 +1,7 @@
 <% const base = user.role === 'client' ? '/client' : '/admin'; const staff = user.role !== 'client'; %>
 <article class="tile stack" style="padding:24px 26px">
   <div class="row between" style="align-items:flex-start;flex-wrap:nowrap">
-    <div style="min-width:0"><h3 style="font-size:20px"><%= s.watch_label %></h3><div class="small muted" style="margin-top:4px;font-size:14px"><%= s.status === 'Delivered' ? 'Delivered ' + fmtDT(s.delivered_at) : 'Collected ' + fmtDT(s.collected_at) %></div></div>
+    <div style="min-width:0"><h3 style="font-size:20px"><%= s.watch_label %></h3><div class="small muted" style="margin-top:4px;font-size:14px"><%= s.status === 'Delivered' ? 'Delivered ' + fmtDT(s.delivered_at) : 'Received ' + fmtDT(s.collected_at) %></div></div>
     <span class="no small"><%= s.watch_no_label %></span>
   </div>
   <div class="row" style="gap:8px">

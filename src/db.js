@@ -144,6 +144,11 @@ for (const c of ['d_name', 'd_line1', 'd_line2', 'd_post', 'd_city', 'd_country'
   addColumn('requests', c, "TEXT NOT NULL DEFAULT ''");
 }
 addColumn('requests', 'total_value', 'REAL');
+// A watch's brand picks its accessory list; the condition is what the inspection found.
+addColumn('watches', 'brand', "TEXT NOT NULL DEFAULT ''");
+addColumn('watches', 'condition', "TEXT NOT NULL DEFAULT ''");
+addColumn('watches', 'condition_note', "TEXT NOT NULL DEFAULT ''");
+addColumn('requests', 'brand', "TEXT NOT NULL DEFAULT ''");
 db.exec(`CREATE TABLE IF NOT EXISTS request_photos (
   id INTEGER PRIMARY KEY,
   request_id INTEGER NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
@@ -231,19 +236,21 @@ const userCount = () => db.prepare('SELECT COUNT(*) n FROM users').get().n;
 // A shipment carries one or more watches. Each watch keeps its own number for life; the shipment
 // has one number for the whole box. The watch columns on `shipments` mirror the first watch so
 // that a shipment row still reads on its own.
-const EMPTY_WATCH = { watch: '', reference: '', serial: '', watch_date: '', value: null, insurance: '', accessories: [] };
+const EMPTY_WATCH = { brand: '', watch: '', reference: '', serial: '', watch_date: '', value: null, insurance: '', accessories: [], condition: '', condition_note: '' };
 
 function insertWatch(shipmentId, w, pos) {
-  db.prepare(`INSERT INTO watches(shipment_id, watch_no, watch, reference, serial, watch_date, value, insurance, accessories, pos, created_at)
-    VALUES(?,?,?,?,?,?,?,?,?,?,?)`).run(
-    shipmentId, nextNumber('watch'), w.watch, w.reference || '', w.serial || '', w.watch_date || '',
-    w.value ?? null, w.insurance || '', JSON.stringify(w.accessories || []), pos, now());
+  db.prepare(`INSERT INTO watches(shipment_id, watch_no, brand, watch, reference, serial, watch_date, value, insurance, accessories,
+      condition, condition_note, pos, created_at)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+    shipmentId, nextNumber('watch'), w.brand || '', w.watch, w.reference || '', w.serial || '', w.watch_date || '',
+    w.value ?? null, w.insurance || '', JSON.stringify(w.accessories || []), w.condition || '', w.condition_note || '', pos, now());
 }
 
 function updateWatch(id, w, pos) {
-  db.prepare(`UPDATE watches SET watch=?, reference=?, serial=?, watch_date=?, value=?, insurance=?, accessories=?, pos=? WHERE id=?`)
-    .run(w.watch, w.reference || '', w.serial || '', w.watch_date || '', w.value ?? null, w.insurance || '',
-      JSON.stringify(w.accessories || []), pos, id);
+  db.prepare(`UPDATE watches SET brand=?, watch=?, reference=?, serial=?, watch_date=?, value=?, insurance=?, accessories=?,
+      condition=?, condition_note=?, pos=? WHERE id=?`)
+    .run(w.brand || '', w.watch, w.reference || '', w.serial || '', w.watch_date || '', w.value ?? null, w.insurance || '',
+      JSON.stringify(w.accessories || []), w.condition || '', w.condition_note || '', pos, id);
 }
 
 // Keeps the shipment row in step with its watches: first watch on the row, declared value the total.
@@ -275,8 +282,9 @@ function createShipment(d, byName, at) {
     const collectedAt = d.collected_at || at || now();
     // A caller may still pass a single watch as flat fields; it becomes the shipment's one watch.
     const watches = (d.watches && d.watches.length ? d.watches : [{
-      watch: d.watch, reference: d.reference, serial: d.serial, watch_date: d.watch_date,
-      value: d.value, insurance: d.insurance, accessories: d.accessories || []
+      brand: d.brand, watch: d.watch, reference: d.reference, serial: d.serial, watch_date: d.watch_date,
+      value: d.value, insurance: d.insurance, accessories: d.accessories || [],
+      condition: d.condition, condition_note: d.condition_note
     }]);
     const info = db.prepare(`INSERT INTO shipments
       (shipment_no, watch_no, client_id, watch, reference, serial, watch_date, value, insurance, accessories,
@@ -286,12 +294,12 @@ function createShipment(d, byName, at) {
       null, '', '[]',
       d.origin || '', d.destination || '',
       d.addr_name || client.name, d.addr_lines || client.address, d.addr_phone || client.phone, d.addr_note || '',
-      collectedAt, 'Collected', d.eta_note || '', now());
+      collectedAt, F.RECEIVED, d.eta_note || '', now());
     const id = Number(info.lastInsertRowid);
     watches.forEach((w, i) => insertWatch(id, w, i));
     syncShipmentWatches(id);
     db.prepare('INSERT INTO events(shipment_id, status, location, note, by_name, created_at) VALUES(?,?,?,?,?,?)')
-      .run(id, 'Collected', d.collected_from || d.origin || '', d.collected_note || '', byName, collectedAt);
+      .run(id, F.RECEIVED, d.collected_from || d.origin || '', d.collected_note || '', byName, collectedAt);
     return id;
   });
 }
@@ -373,7 +381,7 @@ function openRequests(clientId = null) {
 function readRequest(rq) {
   const raw = parseAcc(rq.watches);
   rq.watch_items = (raw.length ? raw : [rq.watch].filter(Boolean))
-    .map((w) => (typeof w === 'string' ? { watch: w, reference: '', serial: '', watch_date: '', value: null } : w))
+    .map((w) => (typeof w === 'string' ? { brand: '', watch: w, reference: '', serial: '', watch_date: '', value: null } : w))
     .filter((w) => w.watch);
   rq.watch_list = rq.watch_items.map((w) => w.watch);
   rq.watch_label = rq.watch_list.length > 1 ? `${rq.watch_list[0]} + ${rq.watch_list.length - 1} more` : (rq.watch_list[0] || rq.watch);

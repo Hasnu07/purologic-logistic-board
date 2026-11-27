@@ -56,7 +56,14 @@
           <span class="lb" style="margin:0">Watch <span data-n><%= i + 1 %></span></span>
           <button type="button" class="btn btn-sm btn-danger" data-remove <%= watches.length < 2 ? 'hidden' : '' %>>Remove</button>
         </div>
-        <div><label class="lb" for="w-model_<%= i %>">Model</label><input id="w-model_<%= i %>" name="watch_<%= i %>" class="in" maxlength="120" value="<%= wv(w, 'watch') %>" placeholder="Rolex Submariner 126610LN" required></div>
+        <div class="grid2">
+          <div><label class="lb" for="w-brand_<%= i %>">Brand</label>
+            <select id="w-brand_<%= i %>" name="brand_<%= i %>" class="in">
+              <option value="">Choose a brand</option>
+              <% BRANDS.forEach((b) => { %><option value="<%= b %>" <%= (w.brand || '') === b ? 'selected' : '' %>><%= b %></option><% }) %>
+            </select></div>
+          <div><label class="lb" for="w-model_<%= i %>">Model</label><input id="w-model_<%= i %>" name="watch_<%= i %>" class="in" maxlength="120" value="<%= wv(w, 'watch') %>" placeholder="Submariner 126610LN" required></div>
+        </div>
         <div class="grid2">
           <div><label class="lb" for="w-ref_<%= i %>">Reference</label><input id="w-ref_<%= i %>" name="reference_<%= i %>" class="in" maxlength="80" value="<%= wv(w, 'reference') %>" placeholder="126610LN" required></div>
           <div><label class="lb" for="w-serial_<%= i %>">Serial, optional</label><input id="w-serial_<%= i %>" name="serial_<%= i %>" class="in" maxlength="80" value="<%= wv(w, 'serial') %>"></div>

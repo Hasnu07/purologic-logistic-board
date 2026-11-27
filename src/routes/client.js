@@ -82,7 +82,7 @@ r.get('/shipments/new', (req, res) => {
     v: {
       kind: 'collection', address: u.address, contact_name: u.name, note: '',
       d_name: u.name, d_line1: '', d_line2: '', d_post: '', d_city: u.city || '', d_country: '', d_phone: u.phone || '',
-      watches: [{ watch: '', reference: '', serial: '', watch_date: '', value: '' }]
+      watches: [{ brand: '', watch: '', reference: '', serial: '', watch_date: '', value: '' }]
     }
   });
 });
@@ -93,7 +93,8 @@ function readRequestForm(body) {
   for (let i = 0; i < 50; i++) {
     if (body['watch_' + i] === undefined) continue;
     const w = {
-      pos: i, watch: s(body['watch_' + i]).slice(0, 120), reference: s(body['reference_' + i]).slice(0, 80),
+      pos: i, brand: F.BRANDS.includes(body['brand_' + i]) ? body['brand_' + i] : '',
+      watch: s(body['watch_' + i]).slice(0, 120), reference: s(body['reference_' + i]).slice(0, 80),
       serial: s(body['serial_' + i]).slice(0, 80), watch_date: s(body['watch_date_' + i]).slice(0, 60),
       value: money(body['value_' + i])
     };

@@ -5,6 +5,8 @@
   const showCost = !staffView || canEdit;
   const home = staffView ? '/admin/shipments' : '/client/shipments';
   const many = watches.length > 1;
+  // A client sees what the inspection found once we have packed the shipment, not while we are still checking.
+  const showInspection = staffView || seesInspection(sh.status);
 %>
 <nav class="crumbs" aria-label="Breadcrumb"><a href="<%= home %>"><%= staffView ? 'Shipments' : 'My shipments' %></a><%- icon('right', 16, 2.2) %><span><%= sh.shipment_no %></span></nav>
 
@@ -21,8 +23,8 @@
 
 <div class="tiles">
   <section class="tile t1 stack" style="flex-basis:260px">
-    <div class="row between"><h3 style="font-size:20px">Pictures</h3><span class="small muted"><%= photos.length %> on file</span></div>
-    <% if (!photos.length) { %><p class="small muted">No pictures have been added yet.</p><% } else { %>
+    <div class="row between"><h3 style="font-size:20px">Pictures</h3><span class="small muted"><%= showInspection ? photos.length + ' on file' : 'After inspection' %></span></div>
+    <% if (!showInspection) { %><p class="small muted">We are checking the watches now. The pictures we take appear here once the shipment is packed.</p><% } else if (!photos.length) { %><p class="small muted">No pictures have been added yet.</p><% } else { %>
     <div class="photos">
       <% photos.forEach((p) => { %>
       <figure class="photo">
@@ -74,7 +76,7 @@
     <div><dt>Shipment</dt><dd class="no" style="font-size:17px"><%= sh.shipment_no %></dd></div>
     <div><dt>Watches</dt><dd><%= watches.length %></dd></div>
     <div><dt>Client</dt><dd><%= sh.client_no %>, <%= sh.client_name %></dd></div>
-    <div><dt>Collected</dt><dd><%= fmtDT(sh.collected_at) %></dd></div>
+    <div><dt>Received</dt><dd><%= fmtDT(sh.collected_at) %></dd></div>
     <div><dt>Courier</dt><dd><%= sh.courier || 'Not booked' %></dd></div>
     <div><dt><%= sh.status === 'Delivered' ? 'Delivered' : 'Route' %></dt><dd><%= sh.status === 'Delivered' ? fmtDT(sh.delivered_at) + (sh.signed_by ? ', signed by ' + sh.signed_by : '') : route(sh) %></dd></div>
   </dl>
@@ -84,22 +86,30 @@
 <div class="tiles">
   <section class="tile t2 stack" style="padding:30px;gap:22px">
     <div class="row between" style="align-items:baseline;flex-wrap:nowrap">
-      <h2><%= many ? 'Watch ' + (i + 1) + ' · ' + w.watch : 'Watch details' %></h2>
+      <h2><%= many ? 'Watch ' + (i + 1) + ' · ' + [w.brand, w.watch].filter(Boolean).join(' ') : 'Watch details' %></h2>
       <span class="no"><%= w.watch_no %></span>
     </div>
     <dl class="facts">
-      <% if (many) { %><div><dt>Brand and model</dt><dd><%= w.watch %></dd></div><% } %>
+      <div><dt>Brand</dt><dd><%= w.brand || '—' %></dd></div>
+      <div><dt>Model</dt><dd><%= w.watch %></dd></div>
       <div><dt>Reference</dt><dd><%= w.reference || '—' %></dd></div>
       <div><dt>Serial</dt><dd><%= w.serial || '—' %></dd></div>
       <div><dt>Watch date</dt><dd><%= w.watch_date || '—' %></dd></div>
       <div><dt>Declared value</dt><dd><%= money(w.value, cur) %></dd></div>
       <div><dt>Insurance</dt><dd><%= w.insurance || '—' %></dd></div>
       <div><dt>Watch no.</dt><dd class="no" style="font-size:17px"><%= w.watch_no %></dd></div>
+      <% if (showInspection) { %>
+      <div><dt>Condition</dt><dd><%= w.condition || 'Not inspected yet' %></dd></div>
+      <% if (w.condition_note) { %><div style="grid-column:1/-1"><dt>Condition notes</dt><dd><%= w.condition_note %></dd></div><% } %>
+      <% } %>
     </dl>
   </section>
   <section class="tile t1 stack" style="padding:30px;flex-basis:260px;gap:18px">
-    <h2>Accessories</h2>
-    <% if (!w.accessories.length) { %><p class="small muted">None recorded.</p><% } else { %>
+    <h2>What we received</h2>
+    <% if (!showInspection) { %>
+    <p class="small muted">We are still checking this watch. Everything we received is listed here once the shipment is packed.</p>
+    <% } else if (!w.accessories.length) { %><p class="small muted">None recorded.</p><% } else { %>
+    <% if (w.brand) { %><p class="small muted" style="margin-top:-8px"><%= w.brand %> list</p><% } %>
     <ul class="acc"><% w.accessories.forEach((a) => { %><li><span class="acc-mark <%= a.ok ? '' : 'acc-no' %>"><%- icon(a.ok ? 'tick' : 'cross', 13, 3) %></span><span><%= a.label %><% if (!a.ok) { %> <span class="muted small">not included</span><% } %></span></li><% }) %></ul>
     <% } %>
   </section>

@@ -1,28 +1,60 @@
 // Display helpers. Everything exported here is available inside the views.
 
-const STATUSES = ['Collected', 'Packed', 'Handed to courier', 'In transit', 'Customs hold', 'Out for delivery', 'Delivered', 'Returned to sender'];
-const CLOSED = ['Delivered', 'Returned to sender'];
+// The life of a shipment, in order. These are the statuses staff can post.
+const RECEIVED = 'Received';
+const INSPECTING = 'Inspecting';
+const PACKING = 'Packing/Creating shipment';
+const IN_ROUTE = 'In route to delivery address';
+const DELIVERED = 'Delivered';
+const STATUSES = [RECEIVED, INSPECTING, PACKING, IN_ROUTE, DELIVERED];
+// Statuses posted before the flow above. They are never offered again, but old shipments still read correctly.
+const LEGACY_STATUSES = ['Collected', 'Packed', 'Handed to courier', 'In transit', 'Customs hold', 'Out for delivery', 'Returned to sender'];
+const ALL_STATUSES = [...STATUSES, ...LEGACY_STATUSES];
+const CLOSED = [DELIVERED, 'Returned to sender'];
 const isClosed = (status) => CLOSED.includes(status);
 const CHIP = {
+  [RECEIVED]: 'chip-amber', [INSPECTING]: 'chip-amber', [PACKING]: '', [IN_ROUTE]: 'chip-teal', [DELIVERED]: 'chip-soft2',
   'Collected': 'chip-amber', 'Packed': '', 'Handed to courier': 'chip-amber', 'In transit': 'chip-teal',
-  'Out for delivery': 'chip-teal', 'Customs hold': 'chip-coral', 'Delivered': 'chip-soft2', 'Returned to sender': 'chip-coral-soft'
+  'Out for delivery': 'chip-teal', 'Customs hold': 'chip-coral', 'Returned to sender': 'chip-coral-soft'
 };
 const chipClass = (status) => ('chip ' + (CHIP[status] || '')).trim();
-// Colour of a tracking entry: coral for collection and holds, amber for handovers, teal while moving.
-const TONE = { 'Collected': 'note-coral', 'Customs hold': 'note-coral', 'Returned to sender': 'note-coral', 'Handed to courier': 'note-amber', 'Packed': 'note-plain' };
+// Colour of a tracking entry: coral when the watches arrive or are held, amber while we handle them, teal while moving.
+const TONE = {
+  [RECEIVED]: 'note-coral', [INSPECTING]: 'note-amber', [PACKING]: 'note-plain',
+  'Collected': 'note-coral', 'Customs hold': 'note-coral', 'Returned to sender': 'note-coral', 'Handed to courier': 'note-amber', 'Packed': 'note-plain'
+};
 const toneClass = (status) => ('note ' + (TONE[status] || '')).trim();
-const MOVING = ['Handed to courier', 'In transit', 'Customs hold', 'Out for delivery'];
+const MOVING = [IN_ROUTE, 'Handed to courier', 'In transit', 'Customs hold', 'Out for delivery'];
 const isMoving = (status) => MOVING.includes(status);
 const needsAttention = (s) => !isClosed(s.status) && (s.status === 'Customs hold' || s.cost === null);
-const STEP = { 'Collected': 1, 'Packed': 2, 'Handed to courier': 3, 'In transit': 3, 'Customs hold': 3, 'Out for delivery': 4, 'Delivered': 5, 'Returned to sender': 5 };
+const STEP = {
+  [RECEIVED]: 1, [INSPECTING]: 2, [PACKING]: 3, [IN_ROUTE]: 4, [DELIVERED]: 5,
+  'Collected': 1, 'Packed': 3, 'Handed to courier': 4, 'In transit': 4, 'Customs hold': 4, 'Out for delivery': 4, 'Returned to sender': 5
+};
 const stepOf = (status) => STEP[status] || 1;
 // The stage the update form offers by default after each status.
 const NEXT_STATUS = {
-  'Collected': 'Packed', 'Packed': 'Handed to courier', 'Handed to courier': 'In transit', 'In transit': 'Out for delivery',
-  'Customs hold': 'In transit', 'Out for delivery': 'Delivered'
+  [RECEIVED]: INSPECTING, [INSPECTING]: PACKING, [PACKING]: IN_ROUTE, [IN_ROUTE]: DELIVERED,
+  'Collected': INSPECTING, 'Packed': IN_ROUTE, 'Handed to courier': IN_ROUTE, 'In transit': IN_ROUTE,
+  'Customs hold': IN_ROUTE, 'Out for delivery': DELIVERED
 };
+// The client sees what the inspection found once the watches are packed, not before.
+const seesInspection = (status) => stepOf(status) >= STEP[PACKING];
 
+// What comes with a watch depends on the brand. Picking the brand picks the list.
 const STD_ACCESSORIES = ['Original box', 'Warranty card', 'Extra links', 'Hang tag', 'Travel pouch', 'Booklets'];
+const BRAND_ACCESSORIES = {
+  'Rolex': ['Watch', 'Box', 'Warranty Card', 'Green Tag', 'White Tag', 'Tool', 'Strap', 'Booklet'],
+  'Patek Philippe': ['Watch', 'Warranty Sheet', 'Booklet', 'Pouch', 'Box General', 'Box Cubitus', 'Box Special', 'Tools', 'Winder'],
+  'Audemars Piguet': ['Watch', 'Booklet', 'Warranty Card', 'Booklet Box'],
+  'Richard Mille': ['Watch', 'Booklet', 'Box', 'Warranty Sheet'],
+  'Cartier': ['Watch', 'Booklet', 'Box', 'Tool']
+};
+const BRANDS = [...Object.keys(BRAND_ACCESSORIES), 'Other'];
+const accessoriesFor = (brand) => BRAND_ACCESSORIES[brand] || STD_ACCESSORIES;
+
+// How a watch arrived, recorded at the inspection.
+const CONDITIONS = ['Unworn', 'Worn', 'Scratches'];
 const PAID_FROM = ['Wallet', 'Card', 'Invoice', 'Cash'];
 const COURIERS = ['Ferrari Group', "Brink's", 'Malca-Amit', 'DHL Express', 'FedEx'];
 const CURRENCIES = ['USD', 'AED', 'EUR', 'GBP', 'CHF', 'HKD'];
@@ -129,6 +161,8 @@ function code39(text, height = 56) {
 }
 
 module.exports = {
-  STATUSES, CLOSED, isClosed, chipClass, toneClass, isMoving, needsAttention, avClass, fmtDay, stepOf, NEXT_STATUS, STD_ACCESSORIES, PAID_FROM, COURIERS, CURRENCIES, ROLE_LABEL,
+  STATUSES, ALL_STATUSES, LEGACY_STATUSES, CLOSED, isClosed, chipClass, toneClass, isMoving, needsAttention, avClass, fmtDay, stepOf, NEXT_STATUS,
+  RECEIVED, INSPECTING, PACKING, IN_ROUTE, DELIVERED, seesInspection,
+  STD_ACCESSORIES, BRANDS, BRAND_ACCESSORIES, accessoriesFor, CONDITIONS, PAID_FROM, COURIERS, CURRENCIES, ROLE_LABEL,
   money, fmtDate, fmtTime, fmtDT, toLocalInput, dur, fileSize, initials, route, icon, code39
 };

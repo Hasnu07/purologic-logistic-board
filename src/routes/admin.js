@@ -123,7 +123,7 @@ r.get('/shipments', (req, res) => {
     couriers: [...new Set(all.map((x) => x.courier).filter(Boolean))].sort(),
     routes: [...new Set(all.map((x) => F.route(x)).filter((x) => x !== '—'))].sort(),
     collectedToday: all.filter((x) => new Date(x.collected_at) >= dayStart()).length,
-    outForDelivery: active.filter((x) => x.status === 'Out for delivery').length,
+    outForDelivery: active.filter((x) => x.status === F.IN_ROUTE || x.status === 'Out for delivery').length,
     cards: attentionCards(active).slice(0, 3)
   });
 });
@@ -136,14 +136,19 @@ r.get('/shipments.csv', editor, (req, res) => {
     if (/^[=+\-@]/.test(t)) t = "'" + t; // keeps spreadsheet apps from reading text as a formula
     return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
   };
-  const head = ['Shipment', 'Watches on shipment', 'Watch no.', 'Watch', 'Reference', 'Serial', 'Declared value', 'Client no.', 'Client',
-    'Collected', 'From', 'To', 'Status', 'Courier', 'AWB', 'Delivered'];
+  const head = ['Shipment', 'Watches on shipment', 'Watch no.', 'Brand', 'Watch', 'Reference', 'Serial', 'Declared value',
+    'Condition', 'Condition notes', 'Accessories received', 'Missing', 'Client no.', 'Client',
+    'Received', 'From', 'To', 'Status', 'Courier', 'AWB', 'Delivered'];
   if (withCost) head.push('Shipment cost', 'Paid from');
   const lines = [head.join(',')];
   for (const x of f.rows) {
     // One line per watch: the shipment columns repeat, so a box of three watches reads as three lines.
     for (const w of D.watchesOf(x.id)) {
-      const row = [x.shipment_no, x.watch_count, w.watch_no, w.watch, w.reference, w.serial, w.value, x.client_no, x.client_name,
+      const acc = D.parseAcc(w.accessories);
+      const row = [x.shipment_no, x.watch_count, w.watch_no, w.brand, w.watch, w.reference, w.serial, w.value,
+        w.condition, w.condition_note,
+        acc.filter((a) => a.ok).map((a) => a.label).join(' | '), acc.filter((a) => !a.ok).map((a) => a.label).join(' | '),
+        x.client_no, x.client_name,
         F.toLocalInput(x.collected_at).replace('T', ' '), x.origin, x.destination, x.status, x.courier, x.awb,
         x.delivered_at ? F.toLocalInput(x.delivered_at).replace('T', ' ') : ''];
       if (withCost) row.push(x.cost, x.paid_from);
@@ -160,13 +165,20 @@ function readWatchBlocks(body) {
   const out = [];
   for (let i = 0; i < 50; i++) {
     if (body['watch_' + i] === undefined) continue;
+    const brand = F.BRANDS.includes(body['brand_' + i]) ? body['brand_' + i] : '';
     const std = list(body['acc_' + i]);
-    const accessories = F.STD_ACCESSORIES.map((label) => ({ label, ok: std.includes(label) }));
-    for (const extra of s(body['acc_other_' + i]).split(',').map((x) => x.trim()).filter(Boolean)) accessories.push({ label: extra, ok: true });
+    const accessories = F.accessoriesFor(brand).map((label) => ({ label, ok: std.includes(label) }));
+    // Anything ticked that is not on the brand's list is kept too, so changing brand loses nothing.
+    for (const extra of std) if (!accessories.some((a) => a.label === extra)) accessories.push({ label: extra, ok: true });
+    for (const extra of s(body['acc_other_' + i]).split(',').map((x) => x.trim()).filter(Boolean)) {
+      if (!accessories.some((a) => a.label === extra)) accessories.push({ label: extra, ok: true });
+    }
     out.push({
-      id: Number(body['watch_id_' + i]) || 0,
+      id: Number(body['watch_id_' + i]) || 0, brand,
       watch: s(body['watch_' + i]), reference: s(body['reference_' + i]), serial: s(body['serial_' + i]),
-      watch_date: s(body['watch_date_' + i]), value: num(body['value_' + i]), insurance: s(body['insurance_' + i]), accessories
+      watch_date: s(body['watch_date_' + i]), value: num(body['value_' + i]), insurance: s(body['insurance_' + i]), accessories,
+      condition: F.CONDITIONS.includes(body['condition_' + i]) ? body['condition_' + i] : '',
+      condition_note: s(body['condition_note_' + i]).slice(0, 300)
     });
   }
   // A block left completely blank is simply not a watch.
@@ -212,8 +224,9 @@ r.get('/shipments/new', editor, (req, res) => {
       destination: full.d_city || '',
       addr_name: full.d_name, addr_lines: full.delivery_lines.join('\n'), addr_phone: full.d_phone, addr_note: full.note,
       watches: full.watch_items.length
-        ? full.watch_items.map((w) => ({ ...D.EMPTY_WATCH, watch: w.watch, reference: w.reference || '', serial: w.serial || '',
-            watch_date: w.watch_date || '', value: w.value === null || w.value === undefined ? null : Number(w.value) }))
+        ? full.watch_items.map((w) => ({ ...D.EMPTY_WATCH, brand: w.brand || '', watch: w.watch, reference: w.reference || '',
+            serial: w.serial || '', watch_date: w.watch_date || '',
+            value: w.value === null || w.value === undefined ? null : Number(w.value) }))
         : [{ ...D.EMPTY_WATCH }]
     });
   }
@@ -357,7 +370,7 @@ r.get('/watches', (req, res) => {
   const q = s(req.query.q);
   const rows = D.listWatches({ q });
   const tabs = {
-    all: rows, withus: rows.filter((x) => ['Collected', 'Packed'].includes(x.status)),
+    all: rows, withus: rows.filter((x) => !F.isMoving(x.status) && !F.isClosed(x.status)),
     transit: rows.filter((x) => F.isMoving(x.status)), delivered: rows.filter((x) => F.isClosed(x.status))
   };
   const tab = tabs[req.query.tab] ? req.query.tab : 'all';
@@ -446,8 +459,12 @@ r.get('/reports', editor, (req, res) => {
   const ids = new Set(rows.map((x) => x.id));
   const events = db.prepare('SELECT shipment_id, status, created_at FROM events ORDER BY shipment_id, created_at, id').all().filter((e) => ids.has(e.shipment_id));
 
-  const STAGES = [['Collected to packed', ['Collected']], ['Packed to courier', ['Packed']], ['Courier to in transit', ['Handed to courier']],
-    ['In transit', ['In transit', 'Customs hold']], ['Out for delivery to delivered', ['Out for delivery']]];
+  const STAGES = [
+    ['Received to inspection', [F.RECEIVED, 'Collected']],
+    ['Inspection', [F.INSPECTING]],
+    ['Packing the shipment', [F.PACKING, 'Packed']],
+    ['On the way to the address', [F.IN_ROUTE, 'Handed to courier', 'In transit', 'Customs hold', 'Out for delivery']]
+  ];
   const total = {}, count = {};
   const held = new Set();
   events.forEach((e, i) => {

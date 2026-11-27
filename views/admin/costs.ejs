@@ -37,7 +37,7 @@
   <div class="row between"><h2>Billed this month</h2><span class="small muted b">Last <%= billed.length %> of <%= billedCount %></span></div>
   <% if (!billed.length) { %><p class="small muted">No costs entered for shipments collected this month.</p><% } else { %>
   <div class="scroll"><table>
-    <thead><tr><th>Shipment</th><th>Watch</th><th>Client</th><th>Courier</th><th>Collected</th><th>Cost</th><th>Charged to</th></tr></thead>
+    <thead><tr><th>Shipment</th><th>Watch</th><th>Client</th><th>Courier</th><th>Received</th><th>Cost</th><th>Charged to</th></tr></thead>
     <tbody>
     <% billed.forEach((x) => { const pending = x.paid_from === 'Wallet' && !isClosed(x.status); %>
     <tr>

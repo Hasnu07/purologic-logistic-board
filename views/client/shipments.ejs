@@ -13,7 +13,7 @@
 <div class="tile table-tile">
   <% if (!rows.length) { %><div class="empty"><%= q ? 'Nothing matches that search.' : tab === 'active' ? 'No shipments are moving right now.' : 'Nothing here yet.' %></div><% } else { %>
   <div class="scroll"><table>
-    <thead><tr><th>Watch no.</th><th>Watch</th><th>Shipment</th><th>Collected</th><th>Status</th><th>Cost</th><th>Delivered</th><th><span class="sr">Open</span></th></tr></thead>
+    <thead><tr><th>Watch no.</th><th>Watch</th><th>Shipment</th><th>Received</th><th>Status</th><th>Cost</th><th>Delivered</th><th><span class="sr">Open</span></th></tr></thead>
     <tbody>
     <% rows.forEach((r) => { %>
     <tr>

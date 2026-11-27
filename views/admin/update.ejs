@@ -38,7 +38,7 @@
   <% if (!recent.length) { %><p class="small muted">Updates you post will be listed here.</p><% } %>
   <% recent.forEach((e) => { %>
   <a class="tile row" href="/admin/update?w=<%= encodeURIComponent(e.watch_no) %>" style="flex-wrap:nowrap;padding:16px 20px;gap:14px;color:var(--ink)">
-    <i class="dot <%= e.status === 'Collected' || e.status === 'Customs hold' ? 'dot-coral' : '' %>"></i>
+    <i class="dot <%= stepOf(e.status) === 1 ? 'dot-coral' : '' %>"></i>
     <span class="grow"><span class="b" style="display:block"><%= e.watch_no %>, <%= e.status %></span><span class="small muted" style="display:block"><%= [e.location, fmtDT(e.created_at)].filter(Boolean).join(', ') %></span></span>
   </a>
   <% }) %>
