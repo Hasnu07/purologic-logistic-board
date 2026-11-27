@@ -43,7 +43,8 @@ Everything lives in the `data` folder: `purologic.db` (the database) and `upload
 ## Live site
 
 Hosted on Fly.io as app `purologic-board` (Frankfurt): https://purologic-board.fly.dev
-After changing the code or design, publish it with `fly deploy --ha=false`. Data on the server is kept.
+The code lives in a private GitHub repository. Every change pushed to the `main` branch is published to the live site
+automatically (see `.github/workflows/deploy.yml`); data on the server is kept. To publish by hand: `fly deploy --ha=false`.
 Settings are in `fly.toml`. It must stay on a single machine, because the database is one file on the `data` volume.
 
 ## Putting it online elsewhere

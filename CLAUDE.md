@@ -24,6 +24,6 @@ Watch shipment portal: admins run the board, clients follow their own watches. S
 
 ## Live site
 
-- Hosted on Fly.io as `purologic-board`: https://purologic-board.fly.dev. Publish with `fly deploy --ha=false`.
+- Hosted on Fly.io as `purologic-board`: https://purologic-board.fly.dev. Pushing to `main` publishes it automatically through GitHub Actions, so work on a branch and merge only what is ready.
 - It must stay on one machine: the database is a single file on the `data` volume. Never delete or recreate that volume.
 - `data/`, `data-demo/` and `test-accounts.txt` are never committed.
