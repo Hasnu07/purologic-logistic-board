@@ -51,14 +51,15 @@ const getShipment = (req) => db.prepare('SELECT * FROM shipments WHERE id = ?').
 // What needs attention, in words, for the cards on the right of several screens.
 function attentionCards(rows) {
   return rows.filter(F.needsAttention).map((x) => (x.status === 'Customs hold'
-    ? { tone: 'note-coral', title: `${x.shipment_no} on customs hold`, sub: `${x.watch}${x.destination ? ', ' + x.destination : ''}.`, link: `/admin/shipments/${x.id}`, action: 'Post an update' }
-    : { tone: 'note-amber', title: `${x.shipment_no} has no shipment cost`, sub: `${x.watch}, ${x.status.toLowerCase()} since ${F.fmtDay(x.collected_at)}. The client cannot see a total yet.`, link: `/admin/costs#s${x.id}`, action: 'Enter the cost' }));
+    ? { tone: 'note-coral', title: `${x.shipment_no} on customs hold`, sub: `${x.watch_label}${x.destination ? ', ' + x.destination : ''}.`, link: `/admin/shipments/${x.id}`, action: 'Post an update' }
+    : { tone: 'note-amber', title: `${x.shipment_no} has no shipment cost`, sub: `${x.watch_label}, ${x.status.toLowerCase()} since ${F.fmtDay(x.collected_at)}. The client cannot see a total yet.`, link: `/admin/costs#s${x.id}`, action: 'Enter the cost' }));
 }
 
 // The bell in the header shows a dot when something needs attention.
 r.use((req, res, next) => {
   res.locals.alerts = req.user.role === 'courier' ? 0 : db.prepare(
     "SELECT COUNT(*) n FROM shipments WHERE status NOT IN ('Delivered','Returned to sender') AND (status = 'Customs hold' OR cost IS NULL)").get().n;
+  res.locals.openRequests = req.user.role === 'courier' ? 0 : db.prepare("SELECT COUNT(*) n FROM requests WHERE status = 'open'").get().n;
   next();
 });
 
@@ -135,29 +136,49 @@ r.get('/shipments.csv', editor, (req, res) => {
     if (/^[=+\-@]/.test(t)) t = "'" + t; // keeps spreadsheet apps from reading text as a formula
     return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
   };
-  const head = ['Shipment', 'Watch no.', 'Watch', 'Reference', 'Serial', 'Client no.', 'Client', 'Collected', 'From', 'To', 'Status', 'Courier', 'AWB', 'Delivered'];
-  if (withCost) head.push('Cost', 'Paid from');
+  const head = ['Shipment', 'Watches on shipment', 'Watch no.', 'Watch', 'Reference', 'Serial', 'Declared value', 'Client no.', 'Client',
+    'Collected', 'From', 'To', 'Status', 'Courier', 'AWB', 'Delivered'];
+  if (withCost) head.push('Shipment cost', 'Paid from');
   const lines = [head.join(',')];
   for (const x of f.rows) {
-    const row = [x.shipment_no, x.watch_no, x.watch, x.reference, x.serial, x.client_no, x.client_name, F.toLocalInput(x.collected_at).replace('T', ' '),
-      x.origin, x.destination, x.status, x.courier, x.awb, x.delivered_at ? F.toLocalInput(x.delivered_at).replace('T', ' ') : ''];
-    if (withCost) row.push(x.cost, x.paid_from);
-    lines.push(row.map(esc).join(','));
+    // One line per watch: the shipment columns repeat, so a box of three watches reads as three lines.
+    for (const w of D.watchesOf(x.id)) {
+      const row = [x.shipment_no, x.watch_count, w.watch_no, w.watch, w.reference, w.serial, w.value, x.client_no, x.client_name,
+        F.toLocalInput(x.collected_at).replace('T', ' '), x.origin, x.destination, x.status, x.courier, x.awb,
+        x.delivered_at ? F.toLocalInput(x.delivered_at).replace('T', ' ') : ''];
+      if (withCost) row.push(x.cost, x.paid_from);
+      lines.push(row.map(esc).join(','));
+    }
   }
   res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="shipments-${f.tab}.csv"` });
   res.send('﻿' + lines.join('\r\n'));
 });
 
 // ---------- create / edit ----------
+// The form repeats the watch block, so the fields are numbered: watch_0, reference_0, acc_0 ...
+function readWatchBlocks(body) {
+  const out = [];
+  for (let i = 0; i < 50; i++) {
+    if (body['watch_' + i] === undefined) continue;
+    const std = list(body['acc_' + i]);
+    const accessories = F.STD_ACCESSORIES.map((label) => ({ label, ok: std.includes(label) }));
+    for (const extra of s(body['acc_other_' + i]).split(',').map((x) => x.trim()).filter(Boolean)) accessories.push({ label: extra, ok: true });
+    out.push({
+      id: Number(body['watch_id_' + i]) || 0,
+      watch: s(body['watch_' + i]), reference: s(body['reference_' + i]), serial: s(body['serial_' + i]),
+      watch_date: s(body['watch_date_' + i]), value: num(body['value_' + i]), insurance: s(body['insurance_' + i]), accessories
+    });
+  }
+  // A block left completely blank is simply not a watch.
+  return out.filter((w) => w.watch || w.reference || w.serial || w.watch_date || w.insurance || (w.value !== null && !Number.isNaN(w.value)));
+}
+
 function readShipmentForm(body) {
-  const std = list(body.acc);
-  const accessories = F.STD_ACCESSORIES.map((label) => ({ label, ok: std.includes(label) }));
-  for (const extra of s(body.acc_other).split(',').map((x) => x.trim()).filter(Boolean)) accessories.push({ label: extra, ok: true });
+  const watches = readWatchBlocks(body);
   const collected = s(body.collected_at) ? new Date(s(body.collected_at)) : new Date();
   return {
     client_id: Number(body.client_id) || 0,
-    watch: s(body.watch), reference: s(body.reference), serial: s(body.serial), watch_date: s(body.watch_date),
-    value: num(body.value), insurance: s(body.insurance), accessories,
+    watches,
     origin: s(body.origin), destination: s(body.destination),
     addr_name: s(body.addr_name), addr_lines: s(body.addr_lines), addr_phone: s(body.addr_phone), addr_note: s(body.addr_note),
     collected_at: Number.isNaN(collected.getTime()) ? D.now() : collected.toISOString(),
@@ -168,9 +189,10 @@ function readShipmentForm(body) {
 }
 function validateShipment(v) {
   const client = v.client_id && D.getUser(v.client_id);
-  if (!client || client.role !== 'client') return 'Choose the client this watch belongs to.';
-  if (!v.watch) return 'Enter the watch (brand and model).';
-  if (Number.isNaN(v.value)) return 'Declared value must be a number.';
+  if (!client || client.role !== 'client') return 'Choose the client these watches belong to.';
+  if (!v.watches.length) return 'Add at least one watch (brand and model).';
+  if (v.watches.some((w) => !w.watch)) return 'Every watch needs its brand and model.';
+  if (v.watches.some((w) => Number.isNaN(w.value))) return 'Declared value must be a number.';
   if (Number.isNaN(v.cost)) return 'Shipment cost must be a number.';
   return null;
 }
@@ -180,9 +202,21 @@ function shipmentForm(res, { sh, v, error }, status = 200) {
 }
 
 r.get('/shipments/new', editor, (req, res) => {
-  const v = { accessories: [], client_id: Number(req.query.client) || 0, collected_at: D.now() };
+  const v = { watches: [{ ...D.EMPTY_WATCH }], client_id: Number(req.query.client) || 0, collected_at: D.now() };
   const rq = Number(req.query.request) && db.prepare("SELECT * FROM requests WHERE id = ? AND status = 'open'").get(Number(req.query.request));
-  if (rq) Object.assign(v, { client_id: rq.client_id, watch: rq.watch, collected_at: rq.preferred_at, collected_from: rq.address.split('\n')[0], request_id: rq.id });
+  if (rq) {
+    const full = D.getRequest(rq.id);
+    Object.assign(v, {
+      client_id: full.client_id, collected_at: full.preferred_at, request_id: full.id,
+      collected_from: full.kind === 'dropoff' ? 'Sent in by the client' : (full.address || '').split('\n')[0],
+      destination: full.d_city || '',
+      addr_name: full.d_name, addr_lines: full.delivery_lines.join('\n'), addr_phone: full.d_phone, addr_note: full.note,
+      watches: full.watch_items.length
+        ? full.watch_items.map((w) => ({ ...D.EMPTY_WATCH, watch: w.watch, reference: w.reference || '', serial: w.serial || '',
+            watch_date: w.watch_date || '', value: w.value === null || w.value === undefined ? null : Number(w.value) }))
+        : [{ ...D.EMPTY_WATCH }]
+    });
+  }
   shipmentForm(res, { sh: null, v, error: null });
 });
 r.post('/shipments', editor, (req, res) => {
@@ -192,23 +226,34 @@ r.post('/shipments', editor, (req, res) => {
   const id = D.createShipment(v, req.user.name);
   const cost = req.user.role === 'admin' ? v.cost : null; // only admins set costs
   db.prepare('UPDATE shipments SET courier = ?, awb = ?, cost = ?, paid_from = ? WHERE id = ?').run(v.courier, v.awb, cost, cost === null ? '' : v.paid_from, id);
-  if (v.request_id) db.prepare("UPDATE requests SET status = 'done' WHERE id = ? AND client_id = ?").run(v.request_id, v.client_id);
-  res.flash('Shipment created. Watch and shipment numbers have been issued.');
+  if (v.request_id) {
+    const rq = D.getRequest(v.request_id);
+    if (rq && rq.client_id === v.client_id) {
+      // Each picture the client attached follows its watch onto the shipment.
+      const made = D.watchesOf(id);
+      for (const p of rq.photos) {
+        const on = made[p.pos];
+        db.prepare('INSERT INTO photos(shipment_id, watch_id, label, filename, mime, created_at) VALUES(?,?,?,?,?,?)')
+          .run(id, on ? on.id : null, 'Sent by the client', p.filename, p.mime, D.now());
+      }
+      db.prepare('DELETE FROM request_photos WHERE request_id = ?').run(rq.id);
+      db.prepare("UPDATE requests SET status = 'done' WHERE id = ?").run(rq.id);
+    }
+  }
+  res.flash(`Shipment created with ${v.watches.length} watch${v.watches.length === 1 ? '' : 'es'}. The numbers have been issued.`);
   res.redirect(`/admin/shipments/${id}`);
 });
 
 r.get('/shipments/:id', (req, res, next) => {
   const d = D.shipmentDetail(Number(req.params.id));
   if (!d) return next();
-  res.render('shipment', { title: d.sh.watch, nav: 'shipments', ...d, staffView: true });
+  res.render('shipment', { title: d.sh.watch_label, nav: 'shipments', ...d, staffView: true });
 });
 
 r.get('/shipments/:id/edit', editor, (req, res, next) => {
   const sh = getShipment(req);
   if (!sh) return next();
-  let accessories = [];
-  try { accessories = JSON.parse(sh.accessories); } catch { /* keep empty */ }
-  shipmentForm(res, { sh, v: { ...sh, accessories }, error: null });
+  shipmentForm(res, { sh, v: { ...sh, watches: D.watchesOf(sh.id) }, error: null });
 });
 r.post('/shipments/:id/edit', editor, (req, res, next) => {
   const sh = getShipment(req);
@@ -217,15 +262,15 @@ r.post('/shipments/:id/edit', editor, (req, res, next) => {
   const error = validateShipment(v);
   if (error) return shipmentForm(res, { sh, v, error }, 400);
   D.tx(() => {
-    db.prepare(`UPDATE shipments SET client_id=?, watch=?, reference=?, serial=?, watch_date=?, value=?, insurance=?, accessories=?,
-      origin=?, destination=?, addr_name=?, addr_lines=?, addr_phone=?, addr_note=?, collected_at=?, eta_note=? WHERE id=?`).run(
-      v.client_id, v.watch, v.reference, v.serial, v.watch_date, v.value, v.insurance, JSON.stringify(v.accessories),
-      v.origin, v.destination, v.addr_name, v.addr_lines, v.addr_phone, v.addr_note, v.collected_at, v.eta_note, sh.id);
+    db.prepare(`UPDATE shipments SET client_id=?, origin=?, destination=?, addr_name=?, addr_lines=?, addr_phone=?, addr_note=?,
+      collected_at=?, eta_note=? WHERE id=?`).run(
+      v.client_id, v.origin, v.destination, v.addr_name, v.addr_lines, v.addr_phone, v.addr_note, v.collected_at, v.eta_note, sh.id);
+    D.saveShipmentWatches(sh.id, v.watches);
     // Keep the first tracking entry in step with the collection date.
     const first = db.prepare('SELECT id FROM events WHERE shipment_id = ? ORDER BY created_at, id LIMIT 1').get(sh.id);
     if (first) db.prepare('UPDATE events SET created_at = ? WHERE id = ?').run(v.collected_at, first.id);
   });
-  res.flash('Watch details saved.');
+  res.flash(v.watches.length > 1 ? 'Shipment and its watches saved.' : 'Watch details saved.');
   res.redirect(`/admin/shipments/${sh.id}`);
 });
 
@@ -239,7 +284,7 @@ r.post('/shipments/:id/events', (req, res, next) => {
     res.flash('Choose a status.', 'err');
   } else {
     D.addEvent(sh.id, { status, location: s(req.body.location), note: s(req.body.note), signed_by: s(req.body.signed_by) }, req.user.name);
-    res.flash(`Update posted: ${sh.watch_no} is now ${status}. The client can see it.`);
+    res.flash(`Update posted: ${sh.shipment_no} is now ${status}. The client can see it.`);
   }
   res.redirect(fromPortal ? '/admin/update' : `/admin/shipments/${sh.id}`);
 });
@@ -264,8 +309,10 @@ r.post('/shipments/:id/photos', editor, photoUpload.array('photos', 12), (req, r
   const sh = getShipment(req);
   const files = req.files || [];
   if (!sh) { files.forEach((f) => removeFile(f.filename)); return next(); }
+  const onWatch = D.watchesOf(sh.id).find((w) => w.id === Number(req.body.watch_id));
   for (const f of files) {
-    db.prepare('INSERT INTO photos(shipment_id, label, filename, mime, created_at) VALUES(?,?,?,?,?)').run(sh.id, s(req.body.label), f.filename, f.mimetype, D.now());
+    db.prepare('INSERT INTO photos(shipment_id, watch_id, label, filename, mime, created_at) VALUES(?,?,?,?,?,?)')
+      .run(sh.id, onWatch ? onWatch.id : null, s(req.body.label), f.filename, f.mimetype, D.now());
   }
   res.flash(files.length ? 'Picture added.' : 'No picture added. Use JPG, PNG or WebP images.', files.length ? 'ok' : 'err');
   res.redirect(`/admin/shipments/${sh.id}`);
@@ -308,18 +355,22 @@ r.get('/shipments/:id/print', (req, res, next) => {
 // ---------- watches ----------
 r.get('/watches', (req, res) => {
   const q = s(req.query.q);
-  const rows = D.listShipments({ q });
+  const rows = D.listWatches({ q });
   const tabs = {
     all: rows, withus: rows.filter((x) => ['Collected', 'Packed'].includes(x.status)),
     transit: rows.filter((x) => F.isMoving(x.status)), delivered: rows.filter((x) => F.isClosed(x.status))
   };
   const tab = tabs[req.query.tab] ? req.query.tab : 'all';
   const w = s(req.query.w);
-  const watch = w ? D.listShipments({ q: w })[0] : rows[0];
+  const watch = (w ? D.listWatches({ q: w }) : rows)[0];
   let detail = null;
   if (watch) {
     const d = D.shipmentDetail(watch.id);
-    detail = { photos: d.photos.slice(0, 3), accOk: d.accessories.filter((a) => a.ok).length, accAll: d.accessories.length };
+    const acc = D.parseAcc(watch.accessories);
+    detail = {
+      photos: d.photos.filter((p) => !p.watch_id || p.watch_id === watch.watch_row_id).slice(0, 3),
+      accOk: acc.filter((a) => a.ok).length, accAll: acc.length, siblings: d.watches.length - 1
+    };
   }
   res.render('admin/watches', { title: 'Watches', nav: 'watches', q, w, tab, tabs, rows: tabs[tab], watch, detail, numbering: D.numbering() });
 });
@@ -445,11 +496,32 @@ r.get('/reports', editor, (req, res) => {
   });
 });
 
-// ---------- collection requests from clients ----------
+// ---------- shipment requests sent in by clients ----------
+r.get('/requests', editor, (req, res) => {
+  const all = D.requestsFor();
+  const tabs = {
+    open: all.filter((x) => x.status === 'open'),
+    done: all.filter((x) => x.status === 'done'),
+    all
+  };
+  const tab = tabs[req.query.tab] ? req.query.tab : 'open';
+  const waiting = tabs.open;
+  res.render('admin/requests', {
+    title: 'Requests', nav: 'requests', tab, tabs, rows: tabs[tab],
+    kpi: {
+      open: waiting.length,
+      watches: waiting.reduce((a, x) => a + x.watch_items.length, 0),
+      declared: waiting.reduce((a, x) => a + (x.declared || 0), 0),
+      collections: waiting.filter((x) => x.kind !== 'dropoff').length,
+      next: waiting.slice().sort((a, b) => a.preferred_at.localeCompare(b.preferred_at))[0]
+    }
+  });
+});
+
 r.post('/requests/:id/dismiss', editor, (req, res) => {
   db.prepare("UPDATE requests SET status = 'dismissed' WHERE id = ? AND status = 'open'").run(Number(req.params.id));
-  res.flash('Collection request closed.');
-  res.redirect('/admin');
+  res.flash('Request closed.');
+  res.redirect(s(req.body.back) === 'requests' ? '/admin/requests' : '/admin');
 });
 
 // ---------- users, sessions, numbering (admin only) ----------
@@ -550,6 +622,7 @@ r.post('/settings', admin, (req, res) => {
   if (F.CURRENCIES.includes(req.body.currency)) D.setSetting('currency', req.body.currency);
   if (s(req.body.company_name)) D.setSetting('company_name', s(req.body.company_name).slice(0, 60));
   D.setSetting('sender_address', s(req.body.sender_address).slice(0, 400));
+  if (req.body.receiving_address !== undefined) D.setSetting('receiving_address', s(req.body.receiving_address).slice(0, 400));
   res.flash('Settings saved. New prefixes apply to numbers issued from now on.');
   res.redirect('/admin/users#settings');
 });

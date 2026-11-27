@@ -1,0 +1,106 @@
+<%- include('../partials/top') %>
+<% const link = (t) => '/admin/requests?tab=' + t; %>
+<div class="head">
+  <div><h1>Requests</h1><p class="sub">What clients have asked us to move. Turn one into a shipment and every watch on it gets its number.</p></div>
+  <a class="btn btn-primary" href="/admin/shipments/new"><%- icon('plus', 18, 2.2) %>New shipment</a>
+</div>
+
+<div class="tabs">
+  <% [['open', 'Waiting'], ['done', 'Made into shipments'], ['all', 'All']].forEach(([key, name]) => { %>
+  <a class="<%= tab === key ? 'on' : '' %>" href="<%= link(key) %>"><%= name %><span class="n"><%= tabs[key].length %></span></a>
+  <% }) %>
+</div>
+
+<% if (!rows.length) { %>
+<div class="tile empty"><%= tab === 'open' ? 'No requests are waiting. Clients send them from their own New shipment page.' : 'Nothing here yet.' %></div>
+<% } %>
+
+<% rows.forEach((q) => { %>
+<section class="tile stack" id="r<%= q.id %>" style="padding:28px;gap:18px">
+  <div class="row between" style="align-items:flex-start;flex-wrap:nowrap">
+    <div style="min-width:0">
+      <h2 style="font-size:22px"><%= q.client_no %> &middot; <%= q.client_name %></h2>
+      <div class="small muted" style="margin-top:4px">Sent <%= fmtDT(q.created_at) %> &middot; <%= q.watch_items.length %> watch<%= q.watch_items.length === 1 ? '' : 'es' %><%= q.declared !== null ? ' · ' + money(q.declared, cur) + ' declared' : '' %></div>
+    </div>
+    <span class="chip <%= q.status === 'open' ? 'chip-amber' : q.status === 'done' ? 'chip-teal' : '' %>"><%= q.status === 'open' ? 'Waiting' : q.status === 'done' ? 'Shipment made' : 'Closed' %></span>
+  </div>
+
+  <div class="tiles">
+    <div class="tile t1 stack" style="flex-basis:220px;padding:20px;gap:6px">
+      <span class="lb" style="margin:0"><%= q.kind === 'dropoff' ? 'Client sends them to us' : 'We collect' %></span>
+      <% if (q.kind === 'dropoff') { %>
+      <div class="small muted">On its way to our address. Any tracking number is in the note.</div>
+      <% } else { %>
+      <div class="b"><%= fmtDT(q.preferred_at) %></div>
+      <div class="small" style="white-space:pre-line"><%= q.address || '—' %></div>
+      <div class="small muted">Ask for <%= q.contact_name || q.client_name %></div>
+      <% } %>
+    </div>
+    <div class="tile t1 stack" style="flex-basis:220px;padding:20px;gap:6px">
+      <span class="lb" style="margin:0">Deliver to</span>
+      <address style="font-style:normal;white-space:pre-line;line-height:1.5"><b><%= q.d_name || q.client_name %></b>
+<%= q.delivery_lines.join('\n') || 'No address given' %></address>
+      <div class="small muted"><%= q.d_phone || '—' %></div>
+    </div>
+  </div>
+
+  <div class="scroll"><table>
+    <thead><tr><th>#</th><th>Model</th><th>Reference</th><th>Serial</th><th>Watch date</th><th>Declared</th><th>Picture</th></tr></thead>
+    <tbody>
+      <% q.watch_items.forEach((w, i) => { const pic = q.photos.find((p) => p.pos === i); %>
+      <tr>
+        <td class="muted"><%= i + 1 %></td>
+        <td class="b"><%= w.watch %></td>
+        <td><%= w.reference || '—' %></td>
+        <td class="muted"><%= w.serial || '—' %></td>
+        <td class="muted"><%= w.watch_date || '—' %></td>
+        <td class="b"><%= w.value === null || w.value === undefined ? '—' : money(Number(w.value), cur) %></td>
+        <td><% if (pic) { %><a class="b" href="/files/reqphoto/<%= pic.id %>" target="_blank" rel="noopener">View</a><% } else { %><span class="muted">—</span><% } %></td>
+      </tr>
+      <% }) %>
+    </tbody>
+    <% if (q.declared !== null) { %>
+    <tfoot><tr><th colspan="5" style="text-align:right">Total declared</th><th class="b"><%= money(q.declared, cur) %></th><th></th></tr></tfoot>
+    <% } %>
+  </table></div>
+
+  <% if (q.note) { %><div class="note note-plain" style="display:block"><div class="s" style="color:var(--ink)"><%= q.note %></div></div><% } %>
+
+  <% if (q.status === 'open') { %>
+  <div class="row">
+    <a class="btn btn-primary" href="/admin/shipments/new?request=<%= q.id %>">Make it a shipment</a>
+    <form method="post" action="/admin/requests/<%= q.id %>/dismiss"><input type="hidden" name="back" value="requests"><button class="btn">Close without shipping</button></form>
+  </div>
+  <% } %>
+</section>
+<% }) %>
+
+<%- include('../partials/mid') %>
+<div><h1 style="font-size:28px">Waiting</h1><p class="sub" style="margin-top:2px">Requests nobody has turned into a shipment yet.</p></div>
+<div class="grid2">
+  <div class="tile tile-teal"><div class="t-num"><%= kpi.open %></div><div class="t-note">request<%= kpi.open === 1 ? '' : 's' %> waiting</div></div>
+  <div class="tile tile-amber"><div class="t-num"><%= kpi.watches %></div><div class="t-note">watches in them</div></div>
+</div>
+<div class="tile tile-teal stack" style="padding:24px">
+  <div class="b">Declared value waiting</div>
+  <div class="t-big" style="font-size:38px"><%= money(kpi.declared, cur) %></div>
+  <div class="kv"><span>Collections to book</span><b><%= kpi.collections %></b></div>
+</div>
+<% if (kpi.next) { %>
+<h3>Next collection</h3>
+<div class="note note-amber" style="display:block">
+  <div class="t" style="color:var(--ink)"><%= fmtDT(kpi.next.preferred_at) %></div>
+  <div class="s"><%= kpi.next.client_no %>, <%= kpi.next.client_name %> &middot; <%= kpi.next.watch_label %></div>
+  <a class="b" href="#r<%= kpi.next.id %>" style="display:inline-block;margin-top:8px">Open the request</a>
+</div>
+<% } %>
+<div class="panel">
+  <h3>How a request becomes a shipment</h3>
+  <ol class="small" style="padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--muted)">
+    <li>Collect the watches, or wait for them to arrive.</li>
+    <li>Open the request and press <strong style="color:var(--ink)">Make it a shipment</strong> &mdash; everything the client typed is already filled in.</li>
+    <li>Check each watch, correct anything, and create it. Numbers are issued then.</li>
+    <li>Add your inspection pictures and the papers on the shipment page, then post updates.</li>
+  </ol>
+</div>
+<%- include('../partials/bottom') %>

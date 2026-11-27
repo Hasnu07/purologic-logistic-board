@@ -1,0 +1,102 @@
+<%- include('../partials/top') %>
+<%
+  const watches = (v.watches && v.watches.length ? v.watches : [{}]);
+  const wv = (w, k) => (w[k] === null || w[k] === undefined || Number.isNaN(w[k]) ? '' : w[k]);
+%>
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/client/shipments">My shipments</a><%- icon('right', 16, 2.2) %><span>New shipment</span></nav>
+<div>
+  <h1>New shipment</h1>
+  <p class="sub">Tell us how the watches reach us, where they are going, and what is in the shipment. We confirm it, collect the watches and give every one its own number.</p>
+</div>
+<% if (error) { %><div class="flash flash-err" role="alert"><%= error %></div><% } %>
+
+<form id="reqform" method="post" action="/client/shipments/new" enctype="multipart/form-data" class="stack" style="gap:22px">
+
+  <section class="tile stack">
+    <div class="row" style="flex-wrap:nowrap;align-items:flex-start"><span class="stepn">1</span><div><h3>Collection or delivery</h3><p class="hint">Do you want us to collect the watches from you, or will you send them to us?</p></div></div>
+    <div class="pick" role="radiogroup" aria-label="How the watches reach us">
+      <label><input type="radio" name="kind" value="collection" data-kind <%= v.kind !== 'dropoff' ? 'checked' : '' %>><span>Collection &middot; you collect from me</span></label>
+      <label><input type="radio" name="kind" value="dropoff" data-kind <%= v.kind === 'dropoff' ? 'checked' : '' %>><span>Delivery &middot; I will send them to you</span></label>
+    </div>
+
+    <div data-when="collection" class="stack" style="gap:16px">
+      <div><label class="lb" for="q-addr">Collection address</label><textarea id="q-addr" name="address" class="in" rows="3" maxlength="300" placeholder="Street&#10;Postcode City&#10;COUNTRY"><%= v.address %></textarea></div>
+      <div class="grid2">
+        <div><label class="lb" for="q-contact">Name to contact at collection</label><input id="q-contact" name="contact_name" class="in" maxlength="120" value="<%= v.contact_name %>" placeholder="Who we ask for"></div>
+        <div><label class="lb" for="q-at">Collection date and time</label><input id="q-at" name="preferred_at" class="in" type="datetime-local" value="<%= v.preferred_at || '' %>"></div>
+      </div>
+    </div>
+
+    <div data-when="dropoff" class="note note-amber" style="display:block">
+      <div class="t" style="color:var(--ink)">Send the watches to this address</div>
+      <address style="font-style:normal;white-space:pre-line;font-weight:600;line-height:1.6;margin-top:6px"><%= settings.receiving_address %></address>
+      <div class="s" style="margin-top:8px">Tell us the tracking number once it is on its way, in the note at the bottom.</div>
+    </div>
+  </section>
+
+  <section class="tile stack">
+    <div class="row" style="flex-wrap:nowrap;align-items:flex-start"><span class="stepn">2</span><div><h3>Delivery address</h3><p class="hint">Where the shipment is going. This is what gets printed on the label.</p></div></div>
+    <div><label class="lb" for="d-name">Name or company</label><input id="d-name" name="d_name" class="in" maxlength="120" value="<%= v.d_name %>" required></div>
+    <div><label class="lb" for="d-l1">Address line 1</label><input id="d-l1" name="d_line1" class="in" maxlength="160" value="<%= v.d_line1 %>" required></div>
+    <div><label class="lb" for="d-l2">Address line 2</label><input id="d-l2" name="d_line2" class="in" maxlength="160" value="<%= v.d_line2 %>" placeholder="Optional"></div>
+    <div class="grid3">
+      <div><label class="lb" for="d-post">Post code</label><input id="d-post" name="d_post" class="in" maxlength="30" value="<%= v.d_post %>"></div>
+      <div><label class="lb" for="d-city">City</label><input id="d-city" name="d_city" class="in" maxlength="80" value="<%= v.d_city %>" required></div>
+      <div><label class="lb" for="d-country">Country</label><input id="d-country" name="d_country" class="in" maxlength="80" value="<%= v.d_country %>" required></div>
+    </div>
+    <div><label class="lb" for="d-phone">Phone number</label><input id="d-phone" name="d_phone" class="in" type="tel" maxlength="40" value="<%= v.d_phone %>" required></div>
+  </section>
+
+  <section class="tile stack">
+    <div class="row" style="flex-wrap:nowrap;align-items:flex-start"><span class="stepn">3</span><div><h3>What is in the shipment</h3><p class="hint">One watch or several. Model, reference and declared value are needed for every watch; the rest helps us check it in.</p></div></div>
+    <div class="stack" data-repeat="watches" style="gap:18px">
+      <% watches.forEach((w, i) => { %>
+      <div class="wblock" data-block data-i="<%= i %>">
+        <div class="row between" style="flex-wrap:nowrap;align-items:center">
+          <span class="lb" style="margin:0">Watch <span data-n><%= i + 1 %></span></span>
+          <button type="button" class="btn btn-sm btn-danger" data-remove <%= watches.length < 2 ? 'hidden' : '' %>>Remove</button>
+        </div>
+        <div><label class="lb" for="w-model_<%= i %>">Model</label><input id="w-model_<%= i %>" name="watch_<%= i %>" class="in" maxlength="120" value="<%= wv(w, 'watch') %>" placeholder="Rolex Submariner 126610LN" required></div>
+        <div class="grid2">
+          <div><label class="lb" for="w-ref_<%= i %>">Reference</label><input id="w-ref_<%= i %>" name="reference_<%= i %>" class="in" maxlength="80" value="<%= wv(w, 'reference') %>" placeholder="126610LN" required></div>
+          <div><label class="lb" for="w-serial_<%= i %>">Serial, optional</label><input id="w-serial_<%= i %>" name="serial_<%= i %>" class="in" maxlength="80" value="<%= wv(w, 'serial') %>"></div>
+        </div>
+        <div class="grid2">
+          <div><label class="lb" for="w-date_<%= i %>">Watch date, optional</label><input id="w-date_<%= i %>" name="watch_date_<%= i %>" class="in" maxlength="60" value="<%= wv(w, 'watch_date') %>" placeholder="Year or card date"></div>
+          <div><label class="lb" for="w-value_<%= i %>">Declared value, <%= cur %></label><input id="w-value_<%= i %>" name="value_<%= i %>" class="in" type="number" min="0" step="0.01" value="<%= wv(w, 'value') %>" placeholder="0.00" data-value required></div>
+        </div>
+        <div><label class="lb" for="w-photo_<%= i %>">Picture of the watch, optional</label><input id="w-photo_<%= i %>" name="photo_<%= i %>" class="in" type="file" accept="image/jpeg,image/png,image/webp"></div>
+      </div>
+      <% }) %>
+    </div>
+    <div><button type="button" class="btn" data-add="watches"><%- icon('plus', 18, 2.2) %>Add another watch</button></div>
+  </section>
+
+  <section class="tile stack">
+    <div class="row" style="flex-wrap:nowrap;align-items:flex-start"><span class="stepn">4</span><div><h3>Anything else</h3><p class="hint">A tracking number, a time that suits you better, anything we should know.</p></div></div>
+    <div><label class="lb" for="q-note">Note, optional</label><textarea id="q-note" name="note" class="in" rows="2" maxlength="300" placeholder="Call on arrival"><%= v.note %></textarea></div>
+  </section>
+</form>
+
+<%- include('../partials/mid') %>
+<div><h1 style="font-size:28px">Your shipment</h1><p class="sub" style="margin-top:2px">What you are asking us to move.</p></div>
+<div class="tile tile-teal stack">
+  <div class="b">Total declared value</div>
+  <div class="t-big" style="font-size:44px" data-total data-cur="<%= cur %>">—</div>
+  <div class="kv"><span>Watches</span><b data-count>1</b></div>
+  <div style="border-top:1px solid rgba(255,255,255,.3);padding-top:12px;font-size:14px">The declared value is what the insurance is based on. Add up every watch honestly &mdash; it is what we insure the box for.</div>
+</div>
+<button class="btn btn-primary btn-wide" form="reqform">Send the request</button>
+<a class="btn btn-wide" href="/client/shipments">Cancel</a>
+<div class="panel" style="background:var(--amber-soft)">
+  <h3 style="color:var(--amber-ink)">What happens next</h3>
+  <ol class="small" style="padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--muted)">
+    <li>We confirm the request and collect the watches, or wait for them to arrive.</li>
+    <li>We check every watch in, photograph it and give it its own number.</li>
+    <li>You follow the shipment here at every step, with the papers attached.</li>
+    <li>When it is delivered you see the total cost of the shipment.</li>
+  </ol>
+</div>
+<script src="/static/form.js" defer></script>
+<script src="/static/request.js" defer></script>
+<%- include('../partials/bottom') %>

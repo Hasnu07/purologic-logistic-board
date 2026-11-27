@@ -45,18 +45,19 @@ function calendar(shipments, requests, monthParam) {
 function today(clientId, requests, base) {
   const start = new Date(); start.setHours(0, 0, 0, 0);
   const end = new Date(start); end.setDate(end.getDate() + 1);
-  const rows = db.prepare(`SELECT e.*, s.id AS sid, s.shipment_no, s.watch, s.watch_no FROM events e JOIN shipments s ON s.id = e.shipment_id
+  const rows = db.prepare(`SELECT e.*, s.id AS sid, s.shipment_no, s.watch, s.watch_no,
+      (SELECT COUNT(*) FROM watches w WHERE w.shipment_id = s.id) AS watch_count FROM events e JOIN shipments s ON s.id = e.shipment_id
     WHERE e.created_at >= ? AND e.created_at < ? ${clientId ? 'AND s.client_id = ?' : ''} ORDER BY e.created_at DESC LIMIT 12`)
     .all(start.toISOString(), end.toISOString(), ...(clientId ? [clientId] : []));
   const items = rows.map((e) => ({
     at: e.created_at, time: F.fmtTime(e.created_at), tone: F.toneClass(e.status),
     icon: e.status === 'Collected' ? 'truck' : e.status === 'Delivered' ? 'check' : e.status === 'Handed to courier' ? 'briefcase' : 'pin',
-    title: `${e.status}: ${e.watch}`, sub: [e.shipment_no, e.location].filter(Boolean).join(', '), href: `${base}/shipments/${e.sid}`
+    title: `${e.status}: ${e.watch}${e.watch_count > 1 ? ' + ' + (e.watch_count - 1) + ' more' : ''}`, sub: [e.shipment_no, e.location].filter(Boolean).join(', '), href: `${base}/shipments/${e.sid}`
   }));
   for (const r of requests) {
     const at = new Date(r.preferred_at);
     if (at >= start && at < end) {
-      items.push({ at: r.preferred_at, time: F.fmtTime(r.preferred_at), tone: 'note note-coral', icon: 'truck', title: `Collection requested: ${r.watch}`, sub: [r.client_no, r.address.split('\n')[0]].filter(Boolean).join(', '), href: null });
+      items.push({ at: r.preferred_at, time: F.fmtTime(r.preferred_at), tone: 'note note-coral', icon: 'truck', title: `Collection requested: ${r.watch_label || r.watch}`, sub: [r.client_no, r.address.split('\n')[0]].filter(Boolean).join(', '), href: null });
     }
   }
   return items.sort((a, b) => a.at.localeCompare(b.at));

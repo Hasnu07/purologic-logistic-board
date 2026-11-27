@@ -29,7 +29,7 @@
       <% if (kpi.oldest) { %>
       <div style="flex:1 1 220px;min-width:0">
         <div style="font-size:26px;font-weight:700;line-height:1.15">Longest open: <%= kpi.oldestDur %></div>
-        <div class="muted" style="font-size:14px;margin-top:6px"><%= kpi.oldest.shipment_no %>, <%= kpi.oldest.watch %> is <%= kpi.oldest.status.toLowerCase() %>, collected <%= fmtDay(kpi.oldest.collected_at) %>.</div>
+        <div class="muted" style="font-size:14px;margin-top:6px"><%= kpi.oldest.shipment_no %>, <%= kpi.oldest.watch_label %> is <%= kpi.oldest.status.toLowerCase() %>, collected <%= fmtDay(kpi.oldest.collected_at) %>.</div>
       </div>
       <a class="btn btn-ghost" href="/admin/shipments/<%= kpi.oldest.id %>">Post update</a>
       <% } else { %>
@@ -61,7 +61,7 @@
     <div class="tile tile-teal stack" style="padding:20px 22px;gap:10px">
       <div class="b" style="font-size:16px">Next collection</div>
       <% if (next) { %>
-      <div class="small muted"><%= fmtDT(next.preferred_at) %>, <%= next.watch %> for <%= next.client_no %></div>
+      <div class="small muted"><%= fmtDT(next.preferred_at) %>, <%= next.watch_label %> for <%= next.client_no %></div>
       <div class="row between" style="margin-top:4px"><span class="av av-coral" style="border-color:var(--teal)"><%= initials(next.client_name) %></span><% if (canEdit) { %><a class="rb rb-amber rb-sm" href="/admin/shipments/new?request=<%= next.id %>" aria-label="Create the shipment for this collection"><%- icon('arrow', 16, 2.4) %></a><% } %></div>
       <% } else { %><div class="small muted">No collection requests waiting.</div><% } %>
     </div>
@@ -70,13 +70,14 @@
 
 <% if (requests.length) { %>
 <div class="tile stack">
-  <div><h2>Collection requests</h2><p class="hint">Sent by clients from their portal. Create the shipment when you collect the watch.</p></div>
+  <div class="row between" style="align-items:flex-start"><div><h2>Shipment requests</h2><p class="hint">Sent by clients from their portal. Make the shipment once you have the watches.</p></div><a class="b" href="/admin/requests">See all requests</a></div>
   <% requests.forEach((q) => { %>
   <div class="file-row">
     <span class="ico ico-soft"><%- icon('truck') %></span>
-    <div class="grow"><div class="b"><%= q.watch %> · <%= q.client_no %> <%= q.client_name %></div><div class="small muted"><%= fmtDT(q.preferred_at) %><%= q.address ? ' · ' + q.address.split('\n').join(', ') : '' %><%= q.note ? ' · ' + q.note : '' %></div></div>
+    <div class="grow"><div class="b"><%= q.watch_label %> · <%= q.client_no %> <%= q.client_name %></div><div class="small muted"><%= q.watch_items.length %> watch<%= q.watch_items.length === 1 ? '' : 'es' %><%= q.declared !== null ? ' · ' + money(q.declared, cur) : '' %> · <%= q.kind === 'dropoff' ? 'client sends them in' : 'collect ' + fmtDT(q.preferred_at) %><%= q.d_city ? ' · to ' + q.d_city : '' %></div></div>
     <% if (canEdit) { %>
-    <a class="btn btn-sm" href="/admin/shipments/new?request=<%= q.id %>">Create shipment</a>
+    <a class="btn btn-sm" href="/admin/requests#r<%= q.id %>">Open</a>
+    <a class="btn btn-sm" href="/admin/shipments/new?request=<%= q.id %>">Make shipment</a>
     <form method="post" action="/admin/requests/<%= q.id %>/dismiss"><button class="btn btn-sm btn-danger">Close</button></form>
     <% } %>
   </div>

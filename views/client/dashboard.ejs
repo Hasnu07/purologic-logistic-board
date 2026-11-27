@@ -14,9 +14,11 @@
         <svg viewBox="0 0 140 48" width="100%" height="48" aria-hidden="true" preserveAspectRatio="none"><polyline points="<%= spark %>" fill="none" stroke="#0E5B57" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline></svg>
       </div>
       <div class="tile tile-amber t1 stack" style="gap:4px;justify-content:center;align-items:center;text-align:center">
-        <div class="b">Shipment wallet</div>
-        <div class="t-big" style="font-size:44px"><%= money(wallet.balance, cur) %></div>
-        <div class="t-note"><%= wallet.pending ? money(wallet.pending, cur) + ' pending for ' + wallet.pendingItems.map((p) => p.shipment_no).join(', ') : 'No pending charges' %></div>
+        <div class="b"><%= owed > 0 ? 'You owe us' : 'Shipment wallet' %></div>
+        <div class="t-big" style="font-size:44px"><%= money(owed > 0 ? owed : wallet.balance, cur) %></div>
+        <div class="t-note"><%= owed > 0
+          ? 'Shipping charges not covered by your wallet' + (wallet.pending ? ', including ' + money(wallet.pending, cur) + ' still on the move' : '')
+          : (wallet.pending ? money(wallet.pending, cur) + ' pending for ' + wallet.pendingItems.map((p) => p.shipment_no).join(', ') : 'No pending charges') %></div>
         <a class="btn btn-dark btn-sm" href="/client/wallet" style="margin-top:8px">Open wallet</a>
       </div>
     </div>
@@ -24,7 +26,7 @@
       <% if (nearest) { %>
       <div style="flex:1 1 220px;min-width:0">
         <div style="font-size:26px;font-weight:700;line-height:1.15"><%= nearest.status === 'Out for delivery' ? 'Out for delivery' : 'Next to arrive' %></div>
-        <div class="muted" style="font-size:14px;margin-top:6px"><%= nearest.watch %>, <%= nearest.shipment_no %>, is <%= nearest.status.toLowerCase() %><%= nearest.last_location ? ' at ' + nearest.last_location : '' %>.<%= nearest.eta_note ? ' ' + nearest.eta_note + '.' : '' %></div>
+        <div class="muted" style="font-size:14px;margin-top:6px"><%= nearest.watch_label %>, <%= nearest.shipment_no %>, is <%= nearest.status.toLowerCase() %><%= nearest.last_location ? ' at ' + nearest.last_location : '' %>.<%= nearest.eta_note ? ' ' + nearest.eta_note + '.' : '' %></div>
       </div>
       <a class="btn btn-ghost" href="/client/shipments/<%= nearest.id %>">Track it</a>
       <% } else { %>
@@ -39,7 +41,7 @@
     <div class="muted" style="font-size:14px;margin-top:-8px">watch<%= active.length === 1 ? '' : 'es' %> in motion</div>
     <div class="stack" style="gap:12px;margin-top:6px">
       <% active.slice(0, 3).forEach((s) => { %>
-      <div><div class="row between small b" style="flex-wrap:nowrap;gap:8px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><%= s.watch.split(' ').slice(0, 2).join(' ') %>, <%= s.shipment_no %></span><span class="nowrap"><%= s.status %></span></div><div class="bar"><i style="width:<%= pct(s.status) %>%"></i></div></div>
+      <div><div class="row between small b" style="flex-wrap:nowrap;gap:8px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><%= s.watch.split(' ').slice(0, 2).join(' ') %><%= s.watch_count > 1 ? ' +' + (s.watch_count - 1) : '' %>, <%= s.shipment_no %></span><span class="nowrap"><%= s.status %></span></div><div class="bar"><i style="width:<%= pct(s.status) %>%"></i></div></div>
       <% }) %>
     </div>
     <a class="rb rb-amber" href="/client/shipments" aria-label="Open my shipments" style="margin-top:auto;align-self:flex-end"><%- icon('arrow', 18, 2.4) %></a>
@@ -51,12 +53,12 @@
       <div class="dash"></div>
       <div class="row between"><div><div class="tiny muted b">Average cost per watch</div><div style="font-size:22px;font-weight:700"><%= costed.length ? money(total / costed.length, cur) : '—' %></div></div><span class="dot dot-amber"></span></div>
       <div class="dash"></div>
-      <div class="row between"><div><div class="tiny muted b">Wallet situation</div><div style="font-size:19px;font-weight:700"><%= wallet.available >= 0 ? 'Good standing' : 'Top-up needed' %></div></div><span class="dot dot-coral"></span></div>
+      <div class="row between"><div><div class="tiny muted b">Wallet situation</div><div style="font-size:19px;font-weight:700"><%= owed > 0 ? 'Payment due' : 'Good standing' %></div></div><span class="dot dot-coral"></span></div>
     </div>
     <div class="tile tile-teal stack" style="padding:20px 22px;gap:10px">
       <div class="b" style="font-size:16px">Last collected</div>
       <% if (newest) { %>
-      <div class="small muted"><%= newest.watch %>, <%= fmtDT(newest.collected_at) %></div>
+      <div class="small muted"><%= newest.watch_label %>, <%= fmtDT(newest.collected_at) %></div>
       <a class="rb rb-amber rb-sm" href="/client/shipments/<%= newest.id %>" aria-label="Open <%= newest.shipment_no %>" style="align-self:flex-end"><%- icon('arrow', 16, 2.4) %></a>
       <% } else { %><div class="small muted">Nothing collected recently.</div><% } %>
     </div>
@@ -80,7 +82,7 @@
     <div class="scroll"><table>
       <thead><tr><th>Watch no.</th><th>Watch</th><th>Shipment</th><th>Date</th><th>Cost</th></tr></thead>
       <tbody><% costed.slice(0, 5).forEach((c) => { %>
-      <tr><td class="no"><a href="/client/shipments/<%= c.id %>"><%= c.watch_no %></a></td><td><%= c.watch %></td><td><%= c.shipment_no %></td><td class="muted"><%= fmtDay(c.collected_at) %></td><td class="b"><%= money(c.cost, cur) %></td></tr>
+      <tr><td class="no"><a href="/client/shipments/<%= c.id %>"><%= c.watch_no_label %></a></td><td><%= c.watch_label %></td><td><%= c.shipment_no %></td><td class="muted"><%= fmtDay(c.collected_at) %></td><td class="b"><%= money(c.cost, cur) %></td></tr>
       <% }) %></tbody>
     </table></div>
     <% } %>

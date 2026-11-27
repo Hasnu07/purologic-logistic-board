@@ -12,7 +12,7 @@
   <% if (found) { %>
   <div class="tile row" style="flex-wrap:nowrap;gap:16px">
     <span class="ico ico-soft" style="width:56px;height:56px;border-radius:16px"><%- icon('watch', 24) %></span>
-    <div class="grow"><h3 style="font-size:19px"><%= found.watch %></h3><div class="small muted"><%= found.watch_no %>, <%= found.shipment_no %>, <%= found.client_no %> <%= found.client_name %></div></div>
+    <div class="grow"><h3 style="font-size:19px"><%= found.watch_label %></h3><div class="small muted"><%= found.watch_nos || found.watch_no %>, <%= found.shipment_no %>, <%= found.client_no %> <%= found.client_name %></div></div>
     <span class="<%= chipClass(found.status) %>"><%= found.status %></span>
   </div>
 

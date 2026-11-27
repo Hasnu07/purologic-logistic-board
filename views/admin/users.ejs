@@ -51,6 +51,7 @@
     <div><label class="lb" for="s-cur">Currency</label><select id="s-cur" name="currency" class="in"><% CURRENCIES.forEach((c) => { %><option <%= c === settings.currency ? 'selected' : '' %>><%= c %></option><% }) %></select></div>
   </div>
   <div><label class="lb" for="s-addr">Sender address, printed on labels</label><textarea id="s-addr" name="sender_address" class="in" rows="3" placeholder="Office address&#10;Phone, email"><%= settings.sender_address %></textarea></div>
+  <div><label class="lb" for="s-recv">Receiving address, shown to a client sending watches in</label><textarea id="s-recv" name="receiving_address" class="in" rows="4" placeholder="Recipient: name&#10;Building&#10;Apartment&#10;City/Country"><%= settings.receiving_address %></textarea></div>
   <div><button class="btn">Save settings</button></div>
 </form>
 

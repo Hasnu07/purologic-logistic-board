@@ -35,7 +35,7 @@
   <div class="scroll"><table>
     <thead><tr><th>Shipment</th><th>Watch no.</th><th>Watch</th><th>Collected</th><th>Status</th><th>Cost</th></tr></thead>
     <tbody><% shipments.forEach((r) => { %>
-    <tr><td class="b"><a href="/admin/shipments/<%= r.id %>"><%= r.shipment_no %></a></td><td class="no"><%= r.watch_no %></td><td><%= r.watch %></td><td><%= fmtDT(r.collected_at) %></td><td><span class="<%= chipClass(r.status) %>"><%= r.status %></span></td><td class="b"><%= money(r.cost, cur) %></td></tr>
+    <tr><td class="b"><a href="/admin/shipments/<%= r.id %>"><%= r.shipment_no %></a></td><td class="no"><%= r.watch_no_label %></td><td><%= r.watch_label %></td><td><%= fmtDT(r.collected_at) %></td><td><span class="<%= chipClass(r.status) %>"><%= r.status %></span></td><td class="b"><%= money(r.cost, cur) %></td></tr>
     <% }) %></tbody>
   </table></div>
   <% } %>

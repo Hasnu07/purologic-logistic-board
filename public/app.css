@@ -261,3 +261,14 @@ body.sheet-body{background:var(--mint)}
   .sheet{margin:0;min-height:0;height:297mm}
   .barcode rect,.sheet table th{print-color-adjust:exact;-webkit-print-color-adjust:exact}
 }
+
+/* A repeated watch block on the shipment form: its own frame so several watches read apart. */
+.wblock{display:flex;flex-direction:column;gap:14px;border:1px solid var(--line);border-radius:20px;padding:20px}
+.wblock + .wblock{margin-top:0}
+/* A shipment with several watches prints one sheet per watch, each starting on a fresh page. */
+.sheet-next{border-top:1px dashed #bbb;padding-top:18px;margin-top:6px}
+@media print{.sheet-next{break-before:page;page-break-before:always;border-top:0;padding-top:0}}
+/* .btn sets display, which would otherwise beat the browser's own rule for [hidden]. */
+[hidden]{display:none !important}
+/* Count of waiting requests, sitting next to the Requests link in the main nav. */
+.nav .n{margin-left:6px;font-size:11px;font-weight:700;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:var(--amber,#e8b045);color:#1c1c1c;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle}

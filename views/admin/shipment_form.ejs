@@ -1,14 +1,17 @@
 <%- include('../partials/top') %>
 <%
-  const acc = v.accessories || [];
-  const has = (label) => acc.some((a) => a.label === label && a.ok);
-  const other = acc.filter((a) => !STD_ACCESSORIES.includes(a.label)).map((a) => a.label).join(', ');
   const val = (k) => (v[k] === null || v[k] === undefined || Number.isNaN(v[k]) ? '' : v[k]);
   const isAdmin = user.role === 'admin';
+  const watches = (v.watches && v.watches.length ? v.watches : [{ accessories: [] }]);
+  // Each watch has its own accessory ticks, so these read one watch at a time.
+  const wval = (w, k) => (w[k] === null || w[k] === undefined || Number.isNaN(w[k]) ? '' : w[k]);
+  const accOf = (w) => (Array.isArray(w.accessories) ? w.accessories : []);
+  const hasAcc = (w, label) => accOf(w).some((a) => a.label === label && a.ok);
+  const otherAcc = (w) => accOf(w).filter((a) => !STD_ACCESSORIES.includes(a.label)).map((a) => a.label).join(', ');
 %>
 <div>
-  <h1><%= sh ? 'Edit watch' : 'New shipment' %></h1>
-  <p class="sub"><%= sh ? 'Watch ' + sh.watch_no + ', shipment ' + sh.shipment_no + '.' : 'The next numbers are issued when you create it: shipment ' + numbering.shipment.next + ', watch ' + numbering.watch.next + '.' %></p>
+  <h1><%= sh ? 'Edit shipment' : 'New shipment' %></h1>
+  <p class="sub"><%= sh ? 'Shipment ' + sh.shipment_no + ', ' + watches.length + ' watch' + (watches.length === 1 ? '' : 'es') + '.' : 'One shipment number for the whole box, one watch number for each watch. Next shipment ' + numbering.shipment.next + ', next watch ' + numbering.watch.next + '.' %></p>
   <a class="btn btn-sm" style="margin-top:12px" href="<%= sh ? '/admin/shipments/' + sh.id : '/admin/shipments' %>"><%= sh ? 'Back to the watch' : 'Back to shipments' %></a>
 </div>
 <% if (error) { %><div class="flash flash-err" role="alert"><%= error %></div><% } %>
@@ -27,20 +30,32 @@
   </section>
 
   <section class="tile stack">
-    <div class="row" style="flex-wrap:nowrap;align-items:flex-start"><span class="stepn">2</span><div><h3>Watch</h3><p class="hint">Pictures and documents are added on the watch page after saving.</p></div></div>
-    <div><label class="lb" for="f-watch">Brand and model</label><input id="f-watch" name="watch" class="in" value="<%= val('watch') %>" placeholder="Rolex Submariner 126610LN" required></div>
-    <div class="grid3">
-      <div><label class="lb" for="f-ref">Reference</label><input id="f-ref" name="reference" class="in" value="<%= val('reference') %>" placeholder="126610LN"></div>
-      <div><label class="lb" for="f-serial">Serial</label><input id="f-serial" name="serial" class="in" value="<%= val('serial') %>" placeholder="Serial number"></div>
-      <div><label class="lb" for="f-date">Watch date</label><input id="f-date" name="watch_date" class="in" value="<%= val('watch_date') %>" placeholder="Year or card date"></div>
+    <div class="row" style="flex-wrap:nowrap;align-items:flex-start"><span class="stepn">2</span><div><h3>Watches</h3><p class="hint">One shipment can carry several watches. Each one gets its own watch number. Pictures and documents are added on the shipment page after saving.</p></div></div>
+    <div class="stack" data-repeat="watches" style="gap:18px">
+      <% watches.forEach((w, i) => { %>
+      <div class="wblock" data-block data-i="<%= i %>">
+        <div class="row between" style="flex-wrap:nowrap;align-items:center">
+          <span class="lb" style="margin:0">Watch <span data-n><%= i + 1 %></span></span>
+          <button type="button" class="btn btn-sm btn-danger" data-remove <%= watches.length < 2 ? 'hidden' : '' %>>Remove</button>
+        </div>
+        <input type="hidden" name="watch_id_<%= i %>" value="<%= w.id || '' %>">
+        <div><label class="lb" for="f-watch_<%= i %>">Brand and model</label><input id="f-watch_<%= i %>" name="watch_<%= i %>" class="in" value="<%= wval(w, 'watch') %>" placeholder="Rolex Submariner 126610LN" required></div>
+        <div class="grid3">
+          <div><label class="lb" for="f-ref_<%= i %>">Reference</label><input id="f-ref_<%= i %>" name="reference_<%= i %>" class="in" value="<%= wval(w, 'reference') %>" placeholder="126610LN"></div>
+          <div><label class="lb" for="f-serial_<%= i %>">Serial</label><input id="f-serial_<%= i %>" name="serial_<%= i %>" class="in" value="<%= wval(w, 'serial') %>" placeholder="Serial number"></div>
+          <div><label class="lb" for="f-date_<%= i %>">Watch date</label><input id="f-date_<%= i %>" name="watch_date_<%= i %>" class="in" value="<%= wval(w, 'watch_date') %>" placeholder="Year or card date"></div>
+        </div>
+        <div class="grid2">
+          <div><label class="lb" for="f-value_<%= i %>">Declared value, <%= cur %></label><input id="f-value_<%= i %>" name="value_<%= i %>" class="in" type="number" min="0" step="0.01" value="<%= wval(w, 'value') %>" placeholder="0.00"></div>
+          <div><label class="lb" for="f-ins_<%= i %>">Insurance</label><input id="f-ins_<%= i %>" name="insurance_<%= i %>" class="in" value="<%= wval(w, 'insurance') %>" placeholder="Insured to 15,000"></div>
+        </div>
+        <div><span class="lb">Accessories received with this watch</span>
+          <div class="checks"><% STD_ACCESSORIES.forEach((a) => { %><label><input type="checkbox" name="acc_<%= i %>" value="<%= a %>" <%= hasAcc(w, a) ? 'checked' : '' %>><%= a %></label><% }) %></div></div>
+        <div><label class="lb" for="f-other_<%= i %>">Other accessories, separated by commas</label><input id="f-other_<%= i %>" name="acc_other_<%= i %>" class="in" value="<%= otherAcc(w) %>" placeholder="Bezel protector, service papers"></div>
+      </div>
+      <% }) %>
     </div>
-    <div class="grid2">
-      <div><label class="lb" for="f-value">Declared value, <%= cur %></label><input id="f-value" name="value" class="in" type="number" min="0" step="0.01" value="<%= val('value') %>" placeholder="0.00"></div>
-      <div><label class="lb" for="f-ins">Insurance</label><input id="f-ins" name="insurance" class="in" value="<%= val('insurance') %>" placeholder="Insured to 15,000"></div>
-    </div>
-    <div><span class="lb">Accessories received with the watch</span>
-      <div class="checks"><% STD_ACCESSORIES.forEach((a) => { %><label><input type="checkbox" name="acc" value="<%= a %>" <%= has(a) ? 'checked' : '' %>><%= a %></label><% }) %></div></div>
-    <div><label class="lb" for="f-other">Other accessories, separated by commas</label><input id="f-other" name="acc_other" class="in" value="<%= other %>" placeholder="Bezel protector, service papers"></div>
+    <div><button type="button" class="btn" data-add="watches"><%- icon('plus', 18, 2.2) %>Add another watch</button></div>
   </section>
 
   <section class="tile stack">
@@ -89,11 +104,12 @@
 <div class="tile tile-teal stack">
   <% if (sh) { %>
   <div class="kv"><span>Shipment number</span><b style="font-size:20px"><%= sh.shipment_no %></b></div>
-  <div class="kv"><span>Watch number</span><b style="font-size:20px"><%= sh.watch_no %></b></div>
+  <div class="kv"><span>Watches on it</span><b style="font-size:20px"><%= watches.length %></b></div>
+  <div class="small" style="opacity:.85">A watch added here is given the next free number when you save. Numbers already issued never change.</div>
   <% } else { %>
   <div class="kv"><span>Next shipment number</span><b style="font-size:20px"><%= numbering.shipment.next %></b></div>
-  <div class="kv"><span>Next watch number</span><b style="font-size:20px"><%= numbering.watch.next %></b></div>
-  <div style="border-top:1px solid rgba(255,255,255,.3);padding-top:12px;font-size:14px">The client sees the watch in their portal as soon as it is created. The address label and watch sheet can be printed from the watch page.</div>
+  <div class="kv"><span>First watch number</span><b style="font-size:20px"><%= numbering.watch.next %></b></div>
+  <div style="border-top:1px solid rgba(255,255,255,.3);padding-top:12px;font-size:14px">Every watch on this shipment is given its own number, in the order shown on the left. The client sees them as soon as the shipment is created, and the label and watch sheets print from the shipment page.</div>
   <% } %>
 </div>
 <% if (clients.length) { %><button class="btn btn-primary btn-wide" form="shipform"><%= sh ? 'Save changes' : 'Create shipment' %></button><% } %>
@@ -103,7 +119,9 @@
   <ul class="small" style="padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--muted)">
     <li>The serial must match the warranty card.</li>
     <li>The declared value is what the insurance is based on.</li>
-    <li>Tick only the accessories you actually received.</li>
+    <li>Tick only the accessories you actually received, watch by watch.</li>
+    <li>All the watches here travel as one shipment, with one cost.</li>
   </ul>
 </div>
+<script src="/static/form.js" defer></script>
 <%- include('../partials/bottom') %>

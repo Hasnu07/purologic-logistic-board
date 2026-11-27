@@ -24,13 +24,13 @@
 <div class="tile table-tile">
   <% if (!rows.length) { %><div class="empty"><%= qs ? 'Nothing matches these filters.' : 'Nothing here yet.' %></div><% } else { %>
   <div class="scroll"><table>
-    <thead><tr><th>Shipment</th><th>Watch no.</th><th>Watch</th><th>Client</th><th>Collected</th><th>Status</th><% if (showCost) { %><th>Cost</th><% } %><th><span class="sr">Open</span></th></tr></thead>
+    <thead><tr><th>Shipment</th><th>Watch no.</th><th>Watches</th><th>Client</th><th>Collected</th><th>Status</th><% if (showCost) { %><th>Cost</th><% } %><th><span class="sr">Open</span></th></tr></thead>
     <tbody>
     <% rows.forEach((r) => { %>
     <tr>
       <td class="b"><%= r.shipment_no %></td>
-      <td class="no"><%= r.watch_no %></td>
-      <td><%= r.watch %></td>
+      <td class="no"><%= r.watch_no_label %></td>
+      <td><%= r.watch_label %></td>
       <td><span class="b"><%= r.client_no %></span> <span class="muted"><%= r.client_name %></span></td>
       <td><%= fmtDT(r.collected_at) %></td>
       <td><span class="<%= chipClass(r.status) %>"><%= r.status %></span></td>

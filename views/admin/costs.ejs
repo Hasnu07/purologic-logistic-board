@@ -20,7 +20,7 @@
     <% waiting.forEach((x) => { %>
     <tr id="s<%= x.id %>">
       <td class="b"><a href="/admin/shipments/<%= x.id %>" style="color:var(--ink)"><%= x.shipment_no %></a></td>
-      <td><span class="no"><%= x.watch_no %></span> <%= x.watch %></td>
+      <td><span class="no"><%= x.watch_no_label %></span> <%= x.watch_label %></td>
       <td><%= x.client_no %></td>
       <td class="muted"><%= x.courier || 'Not booked' %></td>
       <td><label class="sr" for="c<%= x.id %>">Cost for <%= x.shipment_no %></label><input id="c<%= x.id %>" form="f<%= x.id %>" name="cost" class="in" type="number" min="0" step="0.01" placeholder="0.00" required style="width:120px"></td>
@@ -42,7 +42,7 @@
     <% billed.forEach((x) => { const pending = x.paid_from === 'Wallet' && !isClosed(x.status); %>
     <tr>
       <td class="b"><a href="/admin/shipments/<%= x.id %>" style="color:var(--ink)"><%= x.shipment_no %></a></td>
-      <td><span class="no"><%= x.watch_no %></span> <%= x.watch %></td>
+      <td><span class="no"><%= x.watch_no_label %></span> <%= x.watch_label %></td>
       <td><%= x.client_no %></td>
       <td class="muted"><%= x.courier || '—' %></td>
       <td class="muted"><%= fmtDT(x.collected_at) %></td>
@@ -60,7 +60,7 @@
 <form class="panel" method="post" action="/admin/cost">
   <% if (!options.length) { %><p class="small muted">No shipments yet.</p><% } else { %>
   <div><label class="lb" for="c-ship">Shipment</label>
-    <select id="c-ship" name="shipment_id" class="in" required><% options.forEach((x) => { %><option value="<%= x.id %>" <%= x.id === pick ? 'selected' : '' %>><%= x.shipment_no %>, <%= x.watch_no %>, <%= x.watch %><%= x.cost !== null ? ', ' + money(x.cost, cur) : '' %></option><% }) %></select></div>
+    <select id="c-ship" name="shipment_id" class="in" required><% options.forEach((x) => { %><option value="<%= x.id %>" <%= x.id === pick ? 'selected' : '' %>><%= x.shipment_no %>, <%= x.watch_no_label %>, <%= x.watch_label %><%= x.cost !== null ? ', ' + money(x.cost, cur) : '' %></option><% }) %></select></div>
   <div><label class="lb" for="c-courier">Courier</label><input id="c-courier" name="courier" class="in" list="couriers" placeholder="Ferrari Group"><datalist id="couriers"><% COURIERS.forEach((c) => { %><option value="<%= c %>"><% }) %></datalist></div>
   <div><label class="lb" for="c-awb">AWB or tracking no.</label><input id="c-awb" name="awb" class="in" placeholder="7788 1234 5566"></div>
   <div class="grid2">

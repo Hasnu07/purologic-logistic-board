@@ -23,6 +23,7 @@
   <% } else { %>
     <% if (user.role !== 'courier') { %><a class="<%= on('overview') %>" href="/admin">Overview</a><% } %>
     <% if (user.role !== 'admin') { %><a class="<%= on('update') %>" href="/admin/update">Update portal</a><% } %>
+    <% if (user.role !== 'courier') { %><a class="<%= on('requests') %>" href="/admin/requests">Requests<% if (locals.openRequests) { %> <span class="n"><%= locals.openRequests %></span><% } %></a><% } %>
     <a class="<%= on('shipments') %>" href="/admin/shipments">Shipments</a>
     <a class="<%= on('watches') %>" href="/admin/watches">Watches</a>
     <% if (user.role === 'admin') { %>

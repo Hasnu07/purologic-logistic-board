@@ -1,7 +1,7 @@
 <%- include('../partials/top') %>
 <div class="head">
   <div><h1>My shipments</h1><p class="sub">Every watch we have collected from you, with its collected date and time, status and cost.</p></div>
-  <a class="btn btn-primary" href="#request"><%- icon('plus', 18, 2.2) %>Request a collection</a>
+  <a class="btn btn-primary" href="/client/shipments/new"><%- icon('plus', 18, 2.2) %>New shipment</a>
 </div>
 
 <div class="tabs">
@@ -17,8 +17,8 @@
     <tbody>
     <% rows.forEach((r) => { %>
     <tr>
-      <td class="no"><%= r.watch_no %></td>
-      <td class="b"><%= r.watch %></td>
+      <td class="no"><%= r.watch_no_label %></td>
+      <td class="b"><%= r.watch_label %></td>
       <td><%= r.shipment_no %></td>
       <td><%= fmtDT(r.collected_at) %></td>
       <td><span class="<%= chipClass(r.status) %>"><%= r.status %></span></td>
@@ -33,22 +33,31 @@
 </div>
 
 <%- include('../partials/mid') %>
-<div id="request"><h1 style="font-size:28px">Request a collection</h1><p class="sub" style="margin-top:2px">Tell us which watch and when. We confirm, collect it, and it appears in your shipments with its own watch number.</p></div>
-<form class="panel" method="post" action="/client/requests">
-  <div><label class="lb" for="r-watch">Watch</label><input id="r-watch" name="watch" class="in" placeholder="Brand and model" maxlength="120" required></div>
-  <div><label class="lb" for="r-at">Preferred date and time</label><input id="r-at" name="preferred_at" class="in" type="datetime-local" required></div>
-  <div><label class="lb" for="r-addr">Collection address</label><textarea id="r-addr" name="address" class="in" rows="3" maxlength="300"><%= user.address %></textarea></div>
-  <div><label class="lb" for="r-note">Note, optional</label><input id="r-note" name="note" class="in" maxlength="300" placeholder="Call on arrival"></div>
-  <button class="btn btn-primary btn-wide">Send request</button>
-</form>
-<% if (requests.length) { %>
-<h3>Waiting for us to confirm</h3>
+<div id="request" class="row between" style="align-items:baseline"><h1 style="font-size:28px">Your requests</h1><span class="small muted b"><%= requests.length %></span></div>
+<p class="sub" style="margin-top:-8px">A request is what you send us. Once we have the watches it becomes a shipment with its own numbers.</p>
+<a class="btn btn-primary btn-wide" href="/client/shipments/new"><%- icon('plus', 18, 2.2) %>New shipment</a>
+<% if (!requests.length) { %>
+<p class="small muted">You have not sent a request yet.</p>
+<% } %>
 <% requests.forEach((q) => { %>
-<div class="note note-amber">
-  <span class="ico"><%- icon('truck') %></span>
-  <div class="grow"><div class="t" style="color:var(--ink)"><%= q.watch %></div><div class="s"><%= fmtDT(q.preferred_at) %></div></div>
-  <form method="post" action="/client/requests/<%= q.id %>/cancel"><button class="btn btn-sm">Cancel</button></form>
+<div class="note <%= q.status === 'open' ? 'note-amber' : 'note-plain' %>" id="r<%= q.id %>" style="display:block">
+  <div class="row between" style="flex-wrap:nowrap;align-items:flex-start">
+    <div class="grow">
+      <div class="t" style="color:var(--ink)"><%= q.watch_label %></div>
+      <div class="s"><%= q.kind === 'dropoff' ? 'You send them to us' : 'We collect, ' + fmtDT(q.preferred_at) %><%= q.declared !== null ? ' \u00b7 ' + money(q.declared, cur) + ' declared' : '' %></div>
+    </div>
+    <span class="chip <%= q.status === 'open' ? 'chip-amber' : q.status === 'done' ? 'chip-teal' : '' %>"><%= q.status === 'open' ? 'Waiting for us' : q.status === 'done' ? 'Collected' : 'Cancelled' %></span>
+  </div>
+  <% if (q.watch_items.length) { %>
+  <ul class="small" style="padding-left:18px;margin-top:8px;color:var(--muted)">
+    <% q.watch_items.forEach((w) => { %><li><%= w.watch %><%= w.reference ? ' \u00b7 ' + w.reference : '' %><%= w.value !== null && w.value !== undefined ? ' \u00b7 ' + money(Number(w.value), cur) : '' %></li><% }) %>
+  </ul>
+  <% } %>
+  <div class="s" style="margin-top:8px">To <%= [q.d_name, q.d_city, q.d_country].filter(Boolean).join(', ') || 'address on your account' %></div>
+  <% if (q.status === 'open') { %>
+  <form method="post" action="/client/requests/<%= q.id %>/cancel" style="margin-top:10px"><button class="btn btn-sm">Cancel this request</button></form>
+  <% } %>
 </div>
 <% }) %>
-<% } %>
+<script src="/static/form.js" defer></script>
 <%- include('../partials/bottom') %>

@@ -24,4 +24,12 @@ function send(table) {
 r.get('/photo/:id', send('photos'));
 r.get('/doc/:id', send('docs'));
 
+// Pictures attached to a request, before it has become a shipment.
+r.get('/reqphoto/:id', (req, res, next) => {
+  const row = db.prepare('SELECT p.*, q.client_id FROM request_photos p JOIN requests q ON q.id = p.request_id WHERE p.id = ?').get(req.params.id);
+  if (!row || (req.user.role === 'client' && row.client_id !== req.user.id)) return next();
+  res.sendFile(row.filename, { root: D.UPLOADS, headers: { 'Content-Type': row.mime, 'Cache-Control': 'private, max-age=3600' } },
+    (err) => { if (err && !res.headersSent) next(); });
+});
+
 module.exports = r;

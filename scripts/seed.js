@@ -57,6 +57,22 @@ module.exports = function seed() {
   ship(moreau, 'Cartier Santos WSSA0018', 'WSSA0018', '5510XA7Q', '2022', 7400, 'Hong Kong', 'Dubai', 30, null, '', []);
   ship(alvarez, 'Cartier Tank Must WSTA0041', 'WSTA0041', '88213GH', '2024', 3400, 'Dubai', 'Lisbon', 4, null, '', [], { eta: 'Packing today · courier booked for tomorrow' });
 
+  // One collection, three watches: one shipment number, a watch number for each piece.
+  const box = D.createShipment({
+    client_id: weber.id, origin: 'Dubai', destination: 'Geneva', collected_at: ago(26),
+    collected_from: 'Client \u00b7 Dubai Marina', collected_note: 'Three watches handed over together, checked one by one.',
+    addr_note: 'Signature required', eta_note: 'Expected Friday, before 16:00',
+    watches: [
+      { watch: 'Rolex Submariner 126610LN', reference: '126610LN', serial: '2K8M4A17', watch_date: '2023', value: 14500, insurance: 'Insured to 15,000', accessories: acc() },
+      { watch: 'Omega Seamaster 210.30.42', reference: '210.30.42.20.03.001', serial: '88412093', watch_date: '2022', value: 5200, insurance: 'Insured to 6,000', accessories: acc('Hang tag') },
+      { watch: 'Tudor Black Bay 58', reference: 'M79030N-0001', serial: 'TB7741X', watch_date: '2021', value: 3300, insurance: 'Insured to 4,000', accessories: acc('Booklets', 'Travel pouch') }
+    ]
+  }, 'R. Silva');
+  D.addEvent(box, { status: 'Packed', location: 'Dubai office \u00b7 safe room', note: 'All three packed in one case.' }, staff.name, ago(22));
+  D.addEvent(box, { status: 'Handed to courier', location: 'Dubai office' }, staff.name, ago(18));
+  db.prepare('UPDATE shipments SET cost = ?, paid_from = ?, courier = ?, awb = ? WHERE id = ?')
+    .run(420, 'Card', 'Malca-Amit', 'MA 4410 9930', box);
+
   const top = db.prepare('INSERT INTO topups(client_id, amount, note, by_name, created_at) VALUES(?,?,?,?,?)');
   top.run(alvarez.id, 800, 'Bank transfer', 'Admin (owner)', ago(300));
 };

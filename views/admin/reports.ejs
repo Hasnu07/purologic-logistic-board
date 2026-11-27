@@ -49,7 +49,7 @@
 <% slowest.forEach((x, i) => { %>
 <a class="note <%= i === 0 ? 'note-coral' : i === 1 ? 'note-amber' : '' %>" href="/admin/shipments/<%= x.id %>">
   <span class="ico"><%- icon('clock') %></span>
-  <span class="grow"><span class="b" style="display:block;color:var(--ink)"><%= x.shipment_no %>, <%= x.status.toLowerCase() %></span><span class="s" style="display:block"><%= x.where || x.watch %></span></span>
+  <span class="grow"><span class="b" style="display:block;color:var(--ink)"><%= x.shipment_no %>, <%= x.status.toLowerCase() %></span><span class="s" style="display:block"><%= x.where || x.watch_label %></span></span>
   <span class="b" style="color:var(--ink)"><%= dur(x.stuck) %></span>
 </a>
 <% }) %>

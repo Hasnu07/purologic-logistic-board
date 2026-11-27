@@ -1,7 +1,7 @@
 <%- include('../partials/top', { search: { action: '/admin/watches', placeholder: 'Watch no., reference or serial' } }) %>
 <% const canEdit = user.role !== 'courier'; const label = (st) => (isClosed(st) ? st : isMoving(st) ? (st === 'Customs hold' ? 'On hold' : 'In transit') : 'With us'); %>
 <div class="head">
-  <div><h1>Watches</h1><p class="sub">Watch info for every piece that has passed through the board, by its unique number.</p></div>
+  <div><h1>Watches</h1><p class="sub">Every piece that has passed through the board, by its own number. A shipment carrying several watches shows one row per watch.</p></div>
   <% if (canEdit) { %><a class="btn btn-primary" href="/admin/shipments/new"><%- icon('plus', 18, 2.2) %>Add watch</a><% } %>
 </div>
 
@@ -14,7 +14,7 @@
 <div class="tile table-tile">
   <% if (!rows.length) { %><div class="empty"><%= q ? 'No watch matches that search.' : 'No watches on file yet.' %></div><% } else { %>
   <div class="scroll"><table>
-    <thead><tr><th>Watch no.</th><th>Watch</th><th>Reference</th><th>Serial</th><th>Watch date</th><th>Value</th><th>Client</th><th>Status</th><th>Pictures</th><th><span class="sr">Open</span></th></tr></thead>
+    <thead><tr><th>Watch no.</th><th>Watch</th><th>Reference</th><th>Serial</th><th>Watch date</th><th>Value</th><th>Shipment</th><th>Client</th><th>Status</th><th>Pictures</th><th><span class="sr">Open</span></th></tr></thead>
     <tbody>
     <% rows.forEach((r) => { %>
     <tr>
@@ -24,6 +24,7 @@
       <td class="muted"><%= r.serial || '—' %></td>
       <td class="muted"><%= r.watch_date || '—' %></td>
       <td class="b"><%= money(r.value, cur) %></td>
+      <td><%= r.shipment_no %><%= r.watch_count > 1 ? ' · ' + r.watch_count + ' watches' : '' %></td>
       <td><%= r.client_no %></td>
       <td><span class="<%= isMoving(r.status) || isClosed(r.status) ? chipClass(r.status) : 'chip chip-amber' %>"><%= label(r.status) %></span></td>
       <td class="muted"><span class="status-line"><%- icon('image', 16) %><%= r.photo_count %></span></td>
@@ -49,7 +50,7 @@
     <% detail.photos.forEach((p) => { %><figure class="photo"><img src="/files/photo/<%= p.id %>" alt="<%= p.label || 'Watch picture' %>"></figure><% }) %>
     <% for (let i = detail.photos.length; i < 3; i++) { %><figure class="photo"><%- icon('image', 26) %></figure><% } %>
   </div>
-  <div><h3 style="font-size:20px"><%= watch.watch %></h3><div class="small muted"><%= watch.watch_no %>, <%= watch.status.toLowerCase() %> on <%= watch.shipment_no %></div></div>
+  <div><h3 style="font-size:20px"><%= watch.watch %></h3><div class="small muted"><%= watch.watch_no %>, <%= watch.status.toLowerCase() %> on <%= watch.shipment_no %><%= detail.siblings > 0 ? ', travelling with ' + detail.siblings + ' other watch' + (detail.siblings === 1 ? '' : 'es') : '' %></div></div>
   <dl class="facts" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
     <div><dt>Serial</dt><dd><%= watch.serial || '—' %></dd></div>
     <div><dt>Watch date</dt><dd><%= watch.watch_date || '—' %></dd></div>
@@ -61,5 +62,5 @@
   <div class="row"><a class="btn btn-primary" href="/admin/shipments/<%= watch.id %>">Open details</a><a class="btn" style="min-height:48px" href="/admin/shipments/<%= watch.id %>/print?auto=1" target="_blank" rel="noopener"><%- icon('print') %>Print sheet</a></div>
 </div>
 <% } %>
-<div class="tile tile-amber"><div class="b small">Next watch number</div><div class="t-big" style="font-size:38px;margin:4px 0"><%= numbering.watch.next %></div><div class="small b">Issued when a watch is added, never reused</div></div>
+<div class="tile tile-amber"><div class="b small">Next watch number</div><div class="t-big" style="font-size:38px;margin:4px 0"><%= numbering.watch.next %></div><div class="small b">Issued for every watch added, never reused</div></div>
 <%- include('../partials/bottom') %>
